@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"go-starter-template/internal/utils/jwtutil"
 	"go-starter-template/internal/utils/response"
 	"net/http"
@@ -22,7 +21,7 @@ func NewAuthMiddleware(secret string) gin.HandlerFunc {
 		tokenString := strings.Split(authHeader, "Bearer ")[1]
 		claims, err := jwtutil.ValidateToken(tokenString, secret)
 		if err != nil {
-			response.ErrorResponse(c, http.StatusUnauthorized, fmt.Sprintf("Invalid token: %v", err))
+			response.ErrorResponse(c, http.StatusUnauthorized, "Invalid token", err)
 			c.Abort()
 			return
 		}
