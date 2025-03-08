@@ -1,0 +1,15 @@
+app:
+  name: "go-starter-template"
+web:
+  port: 3000
+jwt:
+  secret: "secret"
+  refresh_secret: "refresh_secret"
+log:
+  level: 6
+database:
+  dsn: "postgresql://postgres:password@localhost:5432/database?sslmode=disable"
+  pool:
+    idle: 10
+    max: 100
+    lifetime: 300
