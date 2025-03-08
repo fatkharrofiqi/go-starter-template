@@ -7,7 +7,6 @@ import (
 	"go-starter-template/internal/route"
 	"go-starter-template/internal/service"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
@@ -20,7 +19,6 @@ type BootstrapConfig struct {
 	App       *gin.Engine
 	Log       *logrus.Logger
 	Viper     *viper.Viper
-	Producer  *kafka.Producer
 	Validator *validator.Validate
 }
 
@@ -33,6 +31,7 @@ func Bootstrap(config *BootstrapConfig) {
 	userService := service.NewUserService(config.DB, userRepository)
 
 	// setup controller
+	welcomeController := controller.NewWelcomeController()
 	authController := controller.NewAuthController(authService, config.Log, config.Validator)
 	userController := controller.NewUserController(config.Log, userService)
 
@@ -41,6 +40,7 @@ func Bootstrap(config *BootstrapConfig) {
 
 	// setup route
 	routeConfig := route.NewRouteConfig(config.App)
+	routeConfig.WelcomeRoutes(welcomeController)
 	routeConfig.RegisterAuthRoutes(authController)
 	routeConfig.RegisterUserRoutes(userController, authMiddleware)
 }

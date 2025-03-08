@@ -16,6 +16,10 @@ func NewRouteConfig(app *gin.Engine) *RouteConfig {
 	return &RouteConfig{App: app}
 }
 
+func (r *RouteConfig) WelcomeRoutes(welcomeController *controller.WelcomeController) {
+	r.App.GET("/", welcomeController.Hello)
+}
+
 // RegisterAuthRoutes defines authentication routes
 func (r *RouteConfig) RegisterAuthRoutes(authController *controller.AuthController) {
 	auth := r.App.Group("/api/auth")
