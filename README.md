@@ -62,7 +62,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┃ ┣ 📂 jwtutil
  ┃ ┃ ┣ 📂 logutil
  ┃ ┃ ┣ 📂 response
- ┃ ┃ ┗ 📂 validatortuil
+ ┃ ┃ ┗ 📂 validatorutil
  ┣ 📂 test            # Testing
  ┃ 📜 config.example.yml
  ┃ 📜 config.yml
