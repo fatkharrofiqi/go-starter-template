@@ -16,6 +16,8 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - ✅ **HTTP Routing** using **Gin**
 - ✅ **Makefile** for easy project commands
 - ✅ **Middleware Support** for authentication
+- ✅ **YQ** for reading YAML configuration files
+- ✅ **Unit testing** using **Testify** 
 
 ---
 
