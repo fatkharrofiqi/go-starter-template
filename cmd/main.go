@@ -11,7 +11,7 @@ func main() {
 	log := config.NewLogger(cfg)
 	db := config.NewDatabase(cfg, log)
 	validator := config.NewValidator()
-	app := config.NewFiber(cfg)
+	app := config.NewFiber(cfg, log)
 
 	config.Bootstrap(&config.BootstrapConfig{
 		DB:        db,

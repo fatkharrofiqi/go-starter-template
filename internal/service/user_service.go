@@ -6,8 +6,8 @@ import (
 	"go-starter-template/internal/dto/converter"
 	"go-starter-template/internal/model"
 	"go-starter-template/internal/repository"
+	"go-starter-template/internal/utils/apperrors"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -22,19 +22,12 @@ func NewUserService(db *gorm.DB, userRepository *repository.UserRepository, logr
 	return &UserService{db, userRepository, logrus}
 }
 
-func (c *UserService) GetUser(ctx context.Context, uuid string) (*dto.UserResponse, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
+// GetUser retrieves a user by UUID.
+func (s *UserService) GetUser(ctx context.Context, uuid string) (*dto.UserResponse, error) {
 	user := new(model.User)
-	if err := c.UserRepository.FindByUUID(tx, user, uuid); err != nil {
-		c.Log.WithError(err).Error("error find user by uuid")
-		return nil, fiber.NewError(fiber.ErrNotFound.Code, err.Error())
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("error commit transaction")
-		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
+	if err := s.UserRepository.FindByUUID(s.DB, user, uuid); err != nil {
+		s.Log.WithError(err).Warn("Failed to find user by UUID")
+		return nil, apperrors.ErrUserNotFound
 	}
 
 	return &dto.UserResponse{
@@ -46,19 +39,12 @@ func (c *UserService) GetUser(ctx context.Context, uuid string) (*dto.UserRespon
 	}, nil
 }
 
-func (c *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]dto.UserResponse, int64, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
-	users, total, err := c.UserRepository.Search(tx, request)
+// Search retrieves users based on search criteria.
+func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]dto.UserResponse, int64, error) {
+	users, total, err := s.UserRepository.Search(s.DB, request)
 	if err != nil {
-		c.Log.WithError(err).Error("error getting users")
-		return nil, 0, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("failed to commit transaction")
-		return nil, 0, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
+		s.Log.WithError(err).Error("Error retrieving users")
+		return nil, 0, apperrors.ErrUserSearchFailed
 	}
 
 	responses := make([]dto.UserResponse, len(users))
