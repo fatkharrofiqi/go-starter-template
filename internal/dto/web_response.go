@@ -2,7 +2,7 @@ package dto
 
 // WebResponse is a generic API response structure
 type WebResponse[T any] struct {
-	Data   T             `json:"data,omitempty"`   // Holds the main response data
+	Data   T             `json:"data"`             // Holds the main response data
 	Paging *PageMetadata `json:"paging,omitempty"` // Pagination details (if applicable)
 }
 

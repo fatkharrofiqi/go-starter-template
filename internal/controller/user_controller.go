@@ -46,6 +46,8 @@ func (c *UserController) List(ctx *fiber.Ctx) error {
 		Size:  ctx.QueryInt("size"),
 	}
 
+	req.SetDefault()
+
 	users, total, err := c.UserService.Search(ctx.UserContext(), &req)
 	if err != nil {
 		c.Log.WithError(err).Error("error searching user")
