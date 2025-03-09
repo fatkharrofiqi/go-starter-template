@@ -1,10 +1,9 @@
 package controller
 
 import (
-	"go-starter-template/internal/utils/response"
-	"net/http"
+	"go-starter-template/internal/dto"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type WelcomeController struct{}
@@ -14,8 +13,10 @@ func NewWelcomeController() *WelcomeController {
 	return &WelcomeController{}
 }
 
-func (r *WelcomeController) Hello(ctx *gin.Context) {
-	response.SuccessResponse(ctx, http.StatusOK, gin.H{
-		"message": "Welcome to Go Starter API!",
+func (r *WelcomeController) Hello(ctx *fiber.Ctx) error {
+	return ctx.JSON(dto.WebResponse[interface{}]{
+		Data: map[string]string{
+			"Message": "Welcome to Go Starter API!",
+		},
 	})
 }

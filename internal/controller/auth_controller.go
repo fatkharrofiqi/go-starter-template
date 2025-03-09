@@ -3,14 +3,11 @@ package controller
 import (
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/service"
-	"go-starter-template/internal/utils/errwrap"
 	"go-starter-template/internal/utils/logutil"
-	"go-starter-template/internal/utils/response"
-	"go-starter-template/internal/utils/validatorutil"
-	"net/http"
+	"go-starter-template/internal/utils/validation"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,94 +21,83 @@ func NewAuthController(authService *service.AuthService, logger *logrus.Logger, 
 	return &AuthController{authService, logger, validator}
 }
 
-func (c *AuthController) Login(ctx *gin.Context) {
-	// Log entry of the method with request details
-	logutil.RequestEntry(c.Log, ctx, "Login").Info("Processing login request")
+func (c *AuthController) Login(ctx *fiber.Ctx) error {
+	logutil.AccessLog(c.Log, ctx, "Login").Info("Processing login request")
 
 	var req dto.LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		logutil.Error(c.Log, "Invalid request", err, logrus.Fields{
-			"email": req.Email,
-		})
-		response.ErrorResponse(ctx, http.StatusBadRequest, "Invalid request")
-		return
+	if err := ctx.BodyParser(&req); err != nil {
+		c.Log.Warnf("Failed to parse request body : %v", err)
+		return fiber.ErrBadRequest
 	}
 
-	if errs := validatorutil.ValidateStruct(c.Validator, req); len(errs) > 0 {
-		logutil.Error(c.Log, "Validation failed", nil, logrus.Fields{"email": req.Email, "errors": errs})
-		response.ErrorResponse(ctx, http.StatusBadRequest, "Validation failed", errs)
-		return
+	if err := c.Validator.Struct(req); err != nil {
+		c.Log.Warnf("Invalid request body : %v", err)
+		return fiber.ErrBadRequest
 	}
 
-	token, err := c.AuthService.Login(ctx, req)
+	token, err := c.AuthService.Login(ctx.UserContext(), req)
 	if err != nil {
-		logutil.Error(c.Log, "Invalid credentials", err, logrus.Fields{
-			"email": req.Email,
-		})
-		response.ErrorResponse(ctx, http.StatusUnauthorized, "Invalid credentials")
-		return
+		c.Log.Warnf("Invalid credentials : %v", err)
+		return err
 	}
 
-	response.SuccessResponse(ctx, http.StatusOK, dto.LoginResponse{
-		TokenResponse: *token,
+	return ctx.JSON(dto.WebResponse[*dto.TokenResponse]{
+		Data: token,
 	})
 }
 
-func (c *AuthController) Register(ctx *gin.Context) {
-	// Log entry of the method with request details
-	logutil.RequestEntry(c.Log, ctx, "Register").Info("Processing registration request")
+func (c *AuthController) Register(ctx *fiber.Ctx) error {
+	logutil.AccessLog(c.Log, ctx, "Register").Info("Processing registration request")
 
 	var req dto.RegisterRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		logutil.Error(c.Log, "Invalid request", err)
-		response.ErrorResponse(ctx, http.StatusBadRequest, "Invalid request")
-		return
+	if err := ctx.BodyParser(&req); err != nil {
+		c.Log.Warnf("Failed to parse request body : %v", err)
+		return fiber.ErrBadRequest
 	}
 
-	if errs := validatorutil.ValidateStruct(c.Validator, req); len(errs) > 0 {
-		logutil.Error(c.Log, "Validation failed", nil, logrus.Fields{"email": req.Email, "errors": errs})
-		response.ErrorResponse(ctx, http.StatusBadRequest, "Validation failed", errs)
-		return
+	if err := validation.ValidateStruct(c.Validator, req); err != nil {
+		c.Log.Warnf("Validation failed : %v", err)
+		return err
 	}
 
-	if err := c.AuthService.Register(ctx, req); err != nil {
-		logutil.Error(c.Log, "Registration failed", err)
-		switch {
-		case errwrap.IsErrorType(err, errwrap.ErrDataExists):
-			response.ErrorResponse(ctx, http.StatusConflict, "Registration failed", err)
-		default:
-			response.ErrorResponse(ctx, http.StatusInternalServerError, "Registration failed", err)
-		}
-		return
+	user, err := c.AuthService.Register(ctx.UserContext(), req)
+	if err != nil {
+		c.Log.Warnf("Failed to register user : %v", err)
+		return err
 	}
 
-	response.SuccessResponse(ctx, http.StatusCreated, nil)
+	return ctx.JSON(dto.WebResponse[*dto.UserResponse]{
+		Data: &dto.UserResponse{
+			UUID:      user.UUID,
+			Name:      user.Name,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.Unix(),
+			UpdatedAt: user.UpdatedAt.Unix(),
+		},
+	})
 }
 
-func (c *AuthController) RefreshToken(ctx *gin.Context) {
-	logutil.RequestEntry(c.Log, ctx, "RefreshToken").Info("Processing refresh token request")
+func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
+	logutil.AccessLog(c.Log, ctx, "RefreshToken").Info("Processing refresh token request")
 
 	var req dto.RefreshTokenRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		logutil.Error(c.Log, "Invalid request", err)
-		response.ErrorResponse(ctx, http.StatusBadRequest, "Invalid request")
-		return
+	if err := ctx.BodyParser(&req); err != nil {
+		c.Log.Warnf("Failed to parse request body : %v", err)
+		return fiber.ErrBadRequest
 	}
 
-	if errs := validatorutil.ValidateStruct(c.Validator, req); len(errs) > 0 {
-		logutil.Error(c.Log, "Validation failed", nil, logrus.Fields{"errors": errs})
-		response.ErrorResponse(ctx, http.StatusBadRequest, "Validation failed", errs)
-		return
+	if err := c.Validator.Struct(req); err != nil {
+		c.Log.Warnf("Invalid request body : %v", err)
+		return fiber.ErrBadRequest
 	}
 
-	token, err := c.AuthService.RefreshToken(ctx, req.RefreshToken)
+	token, err := c.AuthService.RefreshToken(ctx.UserContext(), req.RefreshToken)
 	if err != nil {
-		logutil.Error(c.Log, "Invalid credentials", err)
-		response.ErrorResponse(ctx, http.StatusUnauthorized, "Invalid credentials")
-		return
+		c.Log.Warnf("Invalid credentials : %v", err)
+		return err
 	}
 
-	response.SuccessResponse(ctx, http.StatusOK, dto.RefreshTokenResponse{
-		TokenResponse: *token,
+	return ctx.JSON(dto.WebResponse[*dto.TokenResponse]{
+		Data: token,
 	})
 }

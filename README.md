@@ -13,7 +13,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - ✅ **Structured Logging** with **Logrus**
 - ✅ **Database ORM** using **GORM (PostgreSQL)**
 - ✅ **Database Migrations** using **Migrate**
-- ✅ **HTTP Routing** using **Gin**
+- ✅ **HTTP Routing** using **Fiber**
 - ✅ **Makefile** for easy project commands
 - ✅ **Middleware Support** for authentication
 - ✅ **YQ** for reading YAML configuration files
@@ -34,7 +34,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┣ 📂 config           # Configuration files
  ┃ ┃ ┣ 📜 app.go
  ┃ ┃ ┣ 📜 constant.go
- ┃ ┃ ┣ 📜 gin.go
+ ┃ ┃ ┣ 📜 fiber.go
  ┃ ┃ ┣ 📜 gorm.go
  ┃ ┃ ┣ 📜 logrus.go
  ┃ ┃ ┣ 📜 migration.go
@@ -58,11 +58,9 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┣ 📂 service       # Business logic
  ┃ ┃ ┗ 📜 auth_service.go
  ┃ ┣ 📂 utils         # Utility packages
- ┃ ┃ ┣ 📂 errwrap
  ┃ ┃ ┣ 📂 jwtutil
  ┃ ┃ ┣ 📂 logutil
- ┃ ┃ ┣ 📂 response
- ┃ ┃ ┗ 📂 validatorutil
+ ┃ ┃ ┗ 📂 validation
  ┣ 📂 test            # Testing
  ┃ 📜 config.example.yml
  ┃ 📜 config.yml

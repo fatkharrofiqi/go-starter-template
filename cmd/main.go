@@ -11,7 +11,7 @@ func main() {
 	log := config.NewLogger(cfg)
 	db := config.NewDatabase(cfg, log)
 	validator := config.NewValidator()
-	app := config.NewGin()
+	app := config.NewFiber(cfg)
 
 	config.Bootstrap(&config.BootstrapConfig{
 		DB:        db,
@@ -22,7 +22,8 @@ func main() {
 	})
 
 	webPort := cfg.GetInt("web.port")
-	if err := app.Run(fmt.Sprintf(":%d", webPort)); err != nil {
+	err := app.Listen(fmt.Sprintf(":%d", webPort))
+	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

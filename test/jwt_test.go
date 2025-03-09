@@ -12,48 +12,48 @@ import (
 const secretKey = "test_secret"
 
 func TestGenerateAccessToken(t *testing.T) {
-	uid := "user123"
-	token, err := jwtutil.GenerateAccessToken(uid, secretKey)
+	uuid := "user123"
+	token, err := jwtutil.GenerateAccessToken(uuid, secretKey)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	claims, err := jwtutil.ValidateToken(token, secretKey)
 	assert.NoError(t, err)
-	assert.Equal(t, uid, claims.UID)
+	assert.Equal(t, uuid, claims.UUID)
 	assert.Equal(t, "access", claims.Type)
 }
 
 func TestGenerateRefreshToken(t *testing.T) {
-	uid := "user123"
-	token, err := jwtutil.GenerateRefreshToken(uid, secretKey)
+	uuid := "user123"
+	token, err := jwtutil.GenerateRefreshToken(uuid, secretKey)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	claims, err := jwtutil.ValidateToken(token, secretKey)
 	assert.NoError(t, err)
-	assert.Equal(t, uid, claims.UID)
+	assert.Equal(t, uuid, claims.UUID)
 	assert.Equal(t, "refresh", claims.Type)
 }
 
 func TestValidateToken(t *testing.T) {
-	uid := "user123"
-	token, err := jwtutil.GenerateAccessToken(uid, secretKey)
+	uuid := "user123"
+	token, err := jwtutil.GenerateAccessToken(uuid, secretKey)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	claims, err := jwtutil.ValidateToken(token, secretKey)
 	assert.NoError(t, err)
-	assert.Equal(t, uid, claims.UID)
+	assert.Equal(t, uuid, claims.UUID)
 	assert.Equal(t, "access", claims.Type)
 }
 
 func TestExpiredToken(t *testing.T) {
 	// Create a token that expired 1 second ago
 	claims := jwtutil.Claims{
-		UID:  "user123",
+		UUID: "user123",
 		Type: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Second)),

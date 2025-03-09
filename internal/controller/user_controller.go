@@ -2,12 +2,11 @@ package controller
 
 import (
 	"go-starter-template/internal/dto"
+	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/logutil"
-	"go-starter-template/internal/utils/response"
-	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,18 +19,23 @@ func NewUserController(logger *logrus.Logger, userService *service.UserService) 
 	return &UserController{logger, userService}
 }
 
-func (c *UserController) Me(ctx *gin.Context) {
-	logutil.RequestEntry(c.Log, ctx, "Me").Info("Processing me request")
-	uid, _ := ctx.Get("uid")
-	user, err := c.UserService.GetUser(ctx, uid.(string))
+func (c *UserController) Me(ctx *fiber.Ctx) error {
+	logutil.AccessLog(c.Log, ctx, "Me").Info("Processing me request")
+
+	auth := middleware.GetUser(ctx)
+
+	user, err := c.UserService.GetUser(ctx.UserContext(), auth.UUID)
 	if err != nil {
-		response.ErrorResponse(ctx, http.StatusNotFound, "User not found", err)
+		return err
 	}
-	response.SuccessResponse(ctx, http.StatusOK, dto.UserResponse{
-		UID:       user.UID,
-		Name:      user.Name,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt.Unix(),
-		UpdatedAt: user.UpdatedAt.Unix(),
+
+	return ctx.JSON(dto.WebResponse[*dto.UserResponse]{
+		Data: &dto.UserResponse{
+			UUID:      user.UUID,
+			Name:      user.Name,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.Unix(),
+			UpdatedAt: user.UpdatedAt.Unix(),
+		},
 	})
 }

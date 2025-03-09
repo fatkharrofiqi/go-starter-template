@@ -3,7 +3,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
     deleted_at TIMESTAMP WITH TIME ZONE,
-    uid VARCHAR NOT NULL UNIQUE,
+    uuid VARCHAR NOT NULL UNIQUE,
     email VARCHAR UNIQUE,
     password VARCHAR,
     name VARCHAR

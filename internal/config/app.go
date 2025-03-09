@@ -7,8 +7,8 @@ import (
 	"go-starter-template/internal/route"
 	"go-starter-template/internal/service"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
@@ -16,7 +16,7 @@ import (
 
 type BootstrapConfig struct {
 	DB        *gorm.DB
-	App       *gin.Engine
+	App       *fiber.App
 	Log       *logrus.Logger
 	Viper     *viper.Viper
 	Validator *validator.Validate
@@ -27,8 +27,8 @@ func Bootstrap(config *BootstrapConfig) {
 	userRepository := repository.NewUserRepository()
 
 	// setup use service
-	authService := service.NewAuthService(config.DB, userRepository, config.Viper)
-	userService := service.NewUserService(config.DB, userRepository)
+	authService := service.NewAuthService(config.DB, userRepository, config.Viper, config.Log)
+	userService := service.NewUserService(config.DB, userRepository, config.Log)
 
 	// setup controller
 	welcomeController := controller.NewWelcomeController()
@@ -36,7 +36,7 @@ func Bootstrap(config *BootstrapConfig) {
 	userController := controller.NewUserController(config.Log, userService)
 
 	// setup middleware
-	authMiddleware := middleware.NewAuthMiddleware(config.Viper.GetString("jwt.secret"))
+	authMiddleware := middleware.AuthMiddleware(config.Viper.GetString("jwt.secret"), config.Log)
 
 	// setup route
 	routeConfig := route.NewRouteConfig(config.App)

@@ -2,31 +2,33 @@ package middleware
 
 import (
 	"go-starter-template/internal/utils/jwtutil"
-	"go-starter-template/internal/utils/response"
-	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
 )
 
-func NewAuthMiddleware(secret string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
+func AuthMiddleware(secret string, log *logrus.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
 		if authHeader == "" {
-			response.ErrorResponse(c, http.StatusUnauthorized, "Authorization header required")
-			c.Abort()
-			return
+			log.Warnf("Authorization header required")
+			return fiber.ErrUnauthorized
 		}
 
 		tokenString := strings.Split(authHeader, "Bearer ")[1]
 		claims, err := jwtutil.ValidateToken(tokenString, secret)
 		if err != nil {
-			response.ErrorResponse(c, http.StatusUnauthorized, "Invalid token", err)
-			c.Abort()
-			return
+			log.Warnf("Invalid token : %v", err)
+			return fiber.ErrUnauthorized
 		}
 
-		c.Set("uid", claims.UID)
-		c.Next()
+		log.Debugf("User : %v", claims)
+		c.Locals("auth", claims)
+		return c.Next()
 	}
+}
+
+func GetUser(ctx *fiber.Ctx) *jwtutil.Claims {
+	return ctx.Locals("auth").(*jwtutil.Claims)
 }

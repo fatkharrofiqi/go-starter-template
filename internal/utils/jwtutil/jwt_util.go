@@ -10,15 +10,15 @@ import (
 
 // Claims struct for JWT
 type Claims struct {
-	UID  string `json:"uid"`
+	UUID string `json:"uuid"`
 	Type string `json:"type"` // "access" or "refresh"
 	jwt.RegisteredClaims
 }
 
 // GenerateAccessToken creates a short-lived JWT access token
-func GenerateAccessToken(uid string, secretKey string) (string, error) {
+func GenerateAccessToken(uuid string, secretKey string) (string, error) {
 	claims := Claims{
-		UID:  uid,
+		UUID: uuid,
 		Type: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)), // 15 minutes
@@ -31,9 +31,9 @@ func GenerateAccessToken(uid string, secretKey string) (string, error) {
 }
 
 // GenerateRefreshToken creates a long-lived JWT refresh token
-func GenerateRefreshToken(uid string, secretKey string) (string, error) {
+func GenerateRefreshToken(uuid string, secretKey string) (string, error) {
 	claims := Claims{
-		UID:  uid,
+		UUID: uuid,
 		Type: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)), // 30 days
