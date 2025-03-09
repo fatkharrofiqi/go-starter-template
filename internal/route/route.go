@@ -35,6 +35,7 @@ func (r *RouteConfig) RegisterUserRoutes(userController *controller.UserControll
 	user := r.App.Group("/api/users")
 	user.Use(authMiddleware)
 	{
+		user.Get("/", userController.List)
 		user.Get("/me", userController.Me)
 	}
 }

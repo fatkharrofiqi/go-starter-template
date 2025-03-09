@@ -26,18 +26,18 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 
 	var req dto.LoginRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		c.Log.Warnf("Failed to parse request body : %v", err)
-		return fiber.ErrBadRequest
+		c.Log.WithError(err).Error("error parse request body")
+		return err
 	}
 
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Warnf("Invalid request body : %v", err)
-		return fiber.ErrBadRequest
+	if err := validation.ValidateStruct(c.Validator, req); err != nil {
+		c.Log.WithError(err).Error("invalid request body")
+		return err
 	}
 
 	token, err := c.AuthService.Login(ctx.UserContext(), req)
 	if err != nil {
-		c.Log.Warnf("Invalid credentials : %v", err)
+		c.Log.WithError(err).Error("invalid credentials")
 		return err
 	}
 
@@ -51,18 +51,18 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 
 	var req dto.RegisterRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		c.Log.Warnf("Failed to parse request body : %v", err)
-		return fiber.ErrBadRequest
+		c.Log.WithError(err).Error("error parse request body")
+		return err
 	}
 
 	if err := validation.ValidateStruct(c.Validator, req); err != nil {
-		c.Log.Warnf("Validation failed : %v", err)
+		c.Log.WithError(err).Error("invalid request body")
 		return err
 	}
 
 	user, err := c.AuthService.Register(ctx.UserContext(), req)
 	if err != nil {
-		c.Log.Warnf("Failed to register user : %v", err)
+		c.Log.WithError(err).Error("error user registration")
 		return err
 	}
 
@@ -82,18 +82,18 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 
 	var req dto.RefreshTokenRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		c.Log.Warnf("Failed to parse request body : %v", err)
-		return fiber.ErrBadRequest
+		c.Log.WithError(err).Error("error parse request body")
+		return err
 	}
 
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Warnf("Invalid request body : %v", err)
-		return fiber.ErrBadRequest
+	if err := validation.ValidateStruct(c.Validator, req); err != nil {
+		c.Log.WithError(err).Error("invalid request body")
+		return err
 	}
 
 	token, err := c.AuthService.RefreshToken(ctx.UserContext(), req.RefreshToken)
 	if err != nil {
-		c.Log.Warnf("Invalid credentials : %v", err)
+		c.Log.WithError(err).Error("invalid credentials")
 		return err
 	}
 

@@ -12,15 +12,15 @@ func AuthMiddleware(secret string, log *logrus.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
-			log.Warnf("Authorization header required")
-			return fiber.ErrUnauthorized
+			log.Error("authorization header required")
+			return fiber.NewError(fiber.ErrUnauthorized.Code, "authorization header required")
 		}
 
 		tokenString := strings.Split(authHeader, "Bearer ")[1]
 		claims, err := jwtutil.ValidateToken(tokenString, secret)
 		if err != nil {
-			log.Warnf("Invalid token : %v", err)
-			return fiber.ErrUnauthorized
+			log.WithError(err).Error("invalid token")
+			return fiber.NewError(fiber.ErrUnauthorized.Code, err.Error())
 		}
 
 		log.Debugf("User : %v", claims)

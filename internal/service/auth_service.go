@@ -30,31 +30,31 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Tok
 	tx := s.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
-	user, err := s.UserRepository.FindByEmail(tx, req.Email)
-	if err != nil {
-		s.Log.Warnf("Failed to find user by email : %v", err)
+	user := new(model.User)
+	if err := s.UserRepository.FindByEmail(tx, user, req.Email); err != nil {
+		s.Log.WithError(err).Error("error find user by email")
 		return nil, fiber.NewError(fiber.ErrUnauthorized.Code, err.Error())
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		s.Log.Warnf("Failed commit transaction : %v", err)
+		s.Log.WithError(err).Error("error commit transaction")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		s.Log.Warnf("Failed to compare user password with bcrypt hash : %v", err)
+		s.Log.WithError(err).Error("error compare user password with bcrypt hash")
 		return nil, fiber.NewError(fiber.ErrUnauthorized.Code, err.Error())
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.UUID, s.Viper.GetString("jwt.secret"))
 	if err != nil {
-		s.Log.Warnf("Failed generate access token : %v", err)
+		s.Log.WithError(err).Error("error generate access token")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
 	refreshToken, err := jwtutil.GenerateRefreshToken(user.UUID, s.Viper.GetString("jwt.refresh_secret"))
 	if err != nil {
-		s.Log.Warnf("Failed generate access token : %v", err)
+		s.Log.WithError(err).Error("error generate refresh token")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
@@ -70,18 +70,18 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*m
 
 	found, err := s.UserRepository.CountByEmail(tx, req.Email)
 	if err != nil {
-		s.Log.Warnf("Failed count user from database : %v", err)
+		s.Log.WithError(err).Error("error count user from database")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
 	if found > 0 {
-		s.Log.Warnf("User already exists")
+		s.Log.Error("user already exists")
 		return nil, fiber.NewError(fiber.ErrConflict.Code, "User already exists")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		s.Log.Warnf("Failed to generate bcrypt hashed password : %v", err)
+		s.Log.WithError(err).Error("error generate bcrypt hashed password")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
@@ -93,12 +93,12 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*m
 	}
 
 	if err := s.UserRepository.Repository.Create(tx, user); err != nil {
-		s.Log.Warnf("Failed create user : %v", err)
+		s.Log.WithError(err).Error("error creating user")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		s.Log.Warnf("Failed commit transaction : %v", err)
+		s.Log.WithError(err).Error("error commit transaction")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 
@@ -108,13 +108,13 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*m
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error) {
 	claims, err := jwtutil.ValidateToken(refreshToken, s.Viper.GetString("jwt.refresh_secret"))
 	if err != nil {
-		s.Log.Warnf("Failed validate token : %v", err)
+		s.Log.WithError(err).Error("error validate token")
 		return nil, fiber.NewError(fiber.ErrUnauthorized.Code, err.Error())
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(claims.UUID, s.Viper.GetString("jwt.secret"))
 	if err != nil {
-		s.Log.Warnf("Failed generate access token : %v", err)
+		s.Log.WithError(err).Error("error generate access token")
 		return nil, fiber.NewError(fiber.ErrInternalServerError.Code, err.Error())
 	}
 

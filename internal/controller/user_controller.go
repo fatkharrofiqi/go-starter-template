@@ -5,6 +5,7 @@ import (
 	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/logutil"
+	"math"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -26,16 +27,38 @@ func (c *UserController) Me(ctx *fiber.Ctx) error {
 
 	user, err := c.UserService.GetUser(ctx.UserContext(), auth.UUID)
 	if err != nil {
+		c.Log.WithError(err).Error("user not found")
 		return err
 	}
 
 	return ctx.JSON(dto.WebResponse[*dto.UserResponse]{
-		Data: &dto.UserResponse{
-			UUID:      user.UUID,
-			Name:      user.Name,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.Unix(),
-			UpdatedAt: user.UpdatedAt.Unix(),
+		Data: user,
+	})
+}
+
+func (c *UserController) List(ctx *fiber.Ctx) error {
+	logutil.AccessLog(c.Log, ctx, "List").Info("Processing list request")
+
+	req := dto.SearchUserRequest{
+		Name:  ctx.Query("name"),
+		Email: ctx.Query("email"),
+		Page:  ctx.QueryInt("page"),
+		Size:  ctx.QueryInt("size"),
+	}
+
+	users, total, err := c.UserService.Search(ctx.UserContext(), &req)
+	if err != nil {
+		c.Log.WithError(err).Error("error searching user")
+		return err
+	}
+
+	return ctx.JSON(dto.WebResponse[[]dto.UserResponse]{
+		Data: users,
+		Paging: &dto.PageMetadata{
+			Page:      req.Page,
+			Size:      req.Size,
+			TotalItem: total,
+			TotalPage: int64(math.Ceil(float64(total) / float64(req.Size))),
 		},
 	})
 }
