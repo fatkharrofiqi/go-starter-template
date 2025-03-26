@@ -1,22 +1,22 @@
 package config
 
 import (
+	"go-starter-template/internal/config/env"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 // NewDatabase initializes and returns a PostgreSQL database connection
-func NewDatabase(viper *viper.Viper, log *logrus.Logger) *gorm.DB {
-	dsn := viper.GetString("database.dsn")
+func NewDatabase(config *env.Config, log *logrus.Logger) *gorm.DB {
+	dsn := config.Database.DSN
 
-	idleConnection := viper.GetInt("database.pool.idle")
-	maxConnection := viper.GetInt("database.pool.max")
-	maxLifeTimeConnection := viper.GetInt("database.pool.lifetime")
+	idleConnection := config.Database.Pool.Idle
+	maxConnection := config.Database.Pool.Max
+	maxLifeTimeConnection := config.Database.Pool.Lifetime
 
 	// Initialize GORM with PostgreSQL driver
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{

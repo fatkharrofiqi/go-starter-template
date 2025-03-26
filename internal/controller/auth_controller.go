@@ -1,12 +1,11 @@
 package controller
 
 import (
+	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/logutil"
-	"go-starter-template/internal/utils/validation"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -14,10 +13,10 @@ import (
 type AuthController struct {
 	AuthService *service.AuthService
 	Logger      *logrus.Logger
-	Validator   *validator.Validate
+	Validation  *validation.Validation
 }
 
-func NewAuthController(authService *service.AuthService, logger *logrus.Logger, validator *validator.Validate) *AuthController {
+func NewAuthController(authService *service.AuthService, logger *logrus.Logger, validator *validation.Validation) *AuthController {
 	return &AuthController{authService, logger, validator}
 }
 
@@ -30,7 +29,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := validation.ValidateStruct(c.Validator, req); err != nil {
+	if err := c.Validation.Validate(req); err != nil {
 		c.Logger.WithError(err).Warn("Validation failed for login request")
 		return err
 	}
@@ -53,7 +52,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := validation.ValidateStruct(c.Validator, req); err != nil {
+	if err := c.Validation.Validate(req); err != nil {
 		c.Logger.WithError(err).Warn("Validation failed for registration request")
 		return err
 	}
@@ -76,7 +75,7 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	if err := validation.ValidateStruct(c.Validator, req); err != nil {
+	if err := c.Validation.Validate(req); err != nil {
 		c.Logger.WithError(err).Warn("Validation failed for refresh token request")
 		return err
 	}

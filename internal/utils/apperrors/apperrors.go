@@ -25,6 +25,9 @@ var (
 	// Token Errors
 	ErrAccessTokenGeneration  = errors.New("could not generate access token")
 	ErrRefreshTokenGeneration = errors.New("could not generate refresh token")
+
+	// Common Errors
+	ErrBadRequest = errors.New("bad request")
 )
 
 // errorStatusMap maps application errors to their respective HTTP status codes
@@ -47,6 +50,7 @@ var errorStatusMap = map[error]int{
 	// 404 Not Found Errors
 	ErrUserNotFound:     fiber.StatusNotFound,
 	ErrUserSearchFailed: fiber.StatusNotFound,
+	ErrBadRequest:       fiber.StatusBadRequest,
 }
 
 // GetHTTPStatus retrieves the HTTP status code for a given error.

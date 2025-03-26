@@ -1,14 +1,15 @@
 package config
 
 import (
+	"go-starter-template/internal/config/env"
+
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
-func NewLogger(viper *viper.Viper) *logrus.Logger {
+func NewLogger(config *env.Config) *logrus.Logger {
 	log := logrus.New()
 
-	log.SetLevel(logrus.Level(viper.GetInt32("log.level")))
+	log.SetLevel(logrus.Level(config.Log.Level))
 	log.SetFormatter(&logrus.TextFormatter{
 		ForceColors:     true,
 		TimestampFormat: "2006-01-02 15:04:05",

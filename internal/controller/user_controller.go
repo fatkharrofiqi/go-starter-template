@@ -4,6 +4,7 @@ import (
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/service"
+	"go-starter-template/internal/utils/apperrors"
 	"go-starter-template/internal/utils/logutil"
 	"math"
 
@@ -12,7 +13,7 @@ import (
 )
 
 type UserController struct {
-	Log         *logrus.Logger
+	Logger      *logrus.Logger
 	UserService *service.UserService
 }
 
@@ -21,13 +22,13 @@ func NewUserController(logger *logrus.Logger, userService *service.UserService) 
 }
 
 func (c *UserController) Me(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Log, ctx, "Me").Info("Processing me request")
+	logutil.AccessLog(c.Logger, ctx, "Me").Info("Processing me request")
 
 	auth := middleware.GetUser(ctx)
 
 	user, err := c.UserService.GetUser(ctx.UserContext(), auth.UUID)
 	if err != nil {
-		c.Log.WithError(err).Error("user not found")
+		c.Logger.WithError(err).Error("user not found")
 		return err
 	}
 
@@ -37,24 +38,22 @@ func (c *UserController) Me(ctx *fiber.Ctx) error {
 }
 
 func (c *UserController) List(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Log, ctx, "List").Info("Processing list request")
+	logutil.AccessLog(c.Logger, ctx, "List").Info("Processing list user request")
 
-	req := dto.SearchUserRequest{
-		Name:  ctx.Query("name"),
-		Email: ctx.Query("email"),
-		Page:  ctx.QueryInt("page"),
-		Size:  ctx.QueryInt("size"),
+	req := new(dto.SearchUserRequest)
+	if err := ctx.QueryParser(req); err != nil {
+		c.Logger.WithError(err).Error("failed to parse request query")
+		return apperrors.ErrBadRequest
 	}
-
 	req.SetDefault()
 
-	users, total, err := c.UserService.Search(ctx.UserContext(), &req)
+	users, total, err := c.UserService.Search(ctx.UserContext(), req)
 	if err != nil {
-		c.Log.WithError(err).Error("error searching user")
+		c.Logger.WithError(err).Error("error searching user")
 		return err
 	}
 
-	return ctx.JSON(dto.WebResponse[[]dto.UserResponse]{
+	return ctx.JSON(dto.WebResponse[[]*dto.UserResponse]{
 		Data: users,
 		Paging: &dto.PageMetadata{
 			Page:      req.Page,

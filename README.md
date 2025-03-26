@@ -32,6 +32,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┗ 📜 000001_create_user.down.sql
  ┣ 📂 internal           # Internal business logic
  ┃ ┣ 📂 config           # Configuration files
+ ┃ ┃ ┣ 📂 validation
  ┃ ┃ ┣ 📜 app.go
  ┃ ┃ ┣ 📜 constant.go
  ┃ ┃ ┣ 📜 fiber.go
@@ -59,8 +60,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┃ ┗ 📜 auth_service.go
  ┃ ┣ 📂 utils         # Utility packages
  ┃ ┃ ┣ 📂 jwtutil
- ┃ ┃ ┣ 📂 logutil
- ┃ ┃ ┗ 📂 validation
+ ┃ ┃ ┗ 📂 logutil
  ┣ 📂 test            # Testing
  ┃ 📜 config.example.yml
  ┃ 📜 config.yml

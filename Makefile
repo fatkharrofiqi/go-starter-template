@@ -11,8 +11,9 @@ install:
 migrateup:
 	migrate -path db/migration -database $(DSN) -verbose up
 
+STEP ?= 1
 migratedown:
-	migrate -path db/migration -database $(DSN) -verbose down
+	migrate -path db/migration -database $(DSN) -verbose down ${STEP}
 
 migrateschema:
 	@if [ -z "$(name)" ]; then \

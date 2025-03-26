@@ -1,45 +1,45 @@
 package config
 
 import (
+	"go-starter-template/internal/config/env"
+	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/controller"
 	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/repository"
 	"go-starter-template/internal/route"
 	"go-starter-template/internal/service"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
 type BootstrapConfig struct {
-	DB        *gorm.DB
-	App       *fiber.App
-	Log       *logrus.Logger
-	Viper     *viper.Viper
-	Validator *validator.Validate
+	DB         *gorm.DB
+	App        *fiber.App
+	Log        *logrus.Logger
+	Config     *env.Config
+	Validation *validation.Validation
 }
 
-func Bootstrap(config *BootstrapConfig) {
+func Bootstrap(app *BootstrapConfig) {
 	// setup repositories
 	userRepository := repository.NewUserRepository()
 
 	// setup use service
-	authService := service.NewAuthService(config.DB, userRepository, config.Viper, config.Log)
-	userService := service.NewUserService(config.DB, userRepository, config.Log)
+	authService := service.NewAuthService(app.DB, userRepository, app.Config, app.Log)
+	userService := service.NewUserService(app.DB, userRepository, app.Log)
 
 	// setup controller
 	welcomeController := controller.NewWelcomeController()
-	authController := controller.NewAuthController(authService, config.Log, config.Validator)
-	userController := controller.NewUserController(config.Log, userService)
+	authController := controller.NewAuthController(authService, app.Log, app.Validation)
+	userController := controller.NewUserController(app.Log, userService)
 
 	// setup middleware
-	authMiddleware := middleware.AuthMiddleware(config.Viper.GetString("jwt.secret"), config.Log)
+	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Log)
 
 	// setup route
-	routeConfig := route.NewRouteConfig(config.App)
+	routeConfig := route.NewRouteConfig(app.App)
 	routeConfig.WelcomeRoutes(welcomeController)
 	routeConfig.RegisterAuthRoutes(authController)
 	routeConfig.RegisterUserRoutes(userController, authMiddleware)

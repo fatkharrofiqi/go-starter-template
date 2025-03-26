@@ -33,8 +33,8 @@ func (r *RouteConfig) RegisterAuthRoutes(authController *controller.AuthControll
 // RegisterUserRoutes defines user-related routes with authentication middleware
 func (r *RouteConfig) RegisterUserRoutes(userController *controller.UserController, authMiddleware fiber.Handler) {
 	user := r.App.Group("/api/users")
-	user.Use(authMiddleware)
 	{
+		user.Use(authMiddleware)
 		user.Get("/", userController.List)
 		user.Get("/me", userController.Me)
 	}

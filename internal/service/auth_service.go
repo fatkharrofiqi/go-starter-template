@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"go-starter-template/internal/config/env"
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/model"
 	"go-starter-template/internal/repository"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -18,11 +18,11 @@ import (
 type AuthService struct {
 	DB             *gorm.DB
 	UserRepository *repository.UserRepository
-	Config         *viper.Viper
+	Config         *env.Config
 	Logger         *logrus.Logger
 }
 
-func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, config *viper.Viper, logger *logrus.Logger) *AuthService {
+func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, config *env.Config, logger *logrus.Logger) *AuthService {
 	return &AuthService{
 		DB:             db,
 		UserRepository: userRepo,
@@ -47,13 +47,13 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Tok
 	}
 
 	// Generate JWT tokens
-	accessToken, err := jwtutil.GenerateAccessToken(user.UUID, s.Config.GetString("jwt.secret"))
+	accessToken, err := jwtutil.GenerateAccessToken(user.UUID, s.Config.JWT.Secret)
 	if err != nil {
 		s.Logger.WithError(err).Error("Error generating access token")
 		return nil, apperrors.ErrAccessTokenGeneration
 	}
 
-	refreshToken, err := jwtutil.GenerateRefreshToken(user.UUID, s.Config.GetString("jwt.refresh_secret"))
+	refreshToken, err := jwtutil.GenerateRefreshToken(user.UUID, s.Config.JWT.RefreshSecret)
 	if err != nil {
 		s.Logger.WithError(err).Error("Error generating refresh token")
 		return nil, apperrors.ErrRefreshTokenGeneration
@@ -123,14 +123,14 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 // RefreshToken generates a new access token using a valid refresh token.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error) {
-	claims, err := jwtutil.ValidateToken(refreshToken, s.Config.GetString("jwt.refresh_secret"))
+	claims, err := jwtutil.ValidateToken(refreshToken, s.Config.JWT.RefreshSecret)
 	if err != nil {
 		s.Logger.WithError(err).Error("Invalid refresh token")
 		return nil, apperrors.ErrInvalidToken
 	}
 
 	// Generate new access token
-	accessToken, err := jwtutil.GenerateAccessToken(claims.UUID, s.Config.GetString("jwt.secret"))
+	accessToken, err := jwtutil.GenerateAccessToken(claims.UUID, s.Config.JWT.Secret)
 	if err != nil {
 		s.Logger.WithError(err).Error("Error generating new access token")
 		return nil, apperrors.ErrAccessTokenGeneration

@@ -2,6 +2,7 @@ package test
 
 import (
 	"go-starter-template/internal/config"
+	"go-starter-template/internal/config/env"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -11,7 +12,7 @@ import (
 // TestNewDatabase ensures database connection initializes correctly
 func TestNewDatabase(t *testing.T) {
 	// Mock configuration
-	cfg := config.NewViper()
+	cfg := env.NewConfig()
 
 	// Mock logger
 	logger := logrus.New()

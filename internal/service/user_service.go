@@ -40,16 +40,16 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (*dto.UserRespon
 }
 
 // Search retrieves users based on search criteria.
-func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]dto.UserResponse, int64, error) {
+func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]*dto.UserResponse, int64, error) {
 	users, total, err := s.UserRepository.Search(s.DB, request)
 	if err != nil {
 		s.Log.WithError(err).Error("Error retrieving users")
 		return nil, 0, apperrors.ErrUserSearchFailed
 	}
 
-	responses := make([]dto.UserResponse, len(users))
+	responses := make([]*dto.UserResponse, len(users))
 	for i, user := range users {
-		responses[i] = *converter.UserToResponse(&user)
+		responses[i] = converter.UserToResponse(&user)
 	}
 
 	return responses, total, nil

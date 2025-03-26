@@ -1,21 +1,21 @@
 package config
 
 import (
+	"go-starter-template/internal/config/env"
+	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/utils/apperrors"
-	"go-starter-template/internal/utils/validation"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 // NewFiber initializes a new Fiber app with custom configurations.
-func NewFiber(config *viper.Viper, logger *logrus.Logger) *fiber.App {
+func NewFiber(config *env.Config, logger *logrus.Logger) *fiber.App {
 	var app = fiber.New(fiber.Config{
-		AppName:      config.GetString("app.name"),
+		AppName:      config.App.Name,
 		ErrorHandler: NewErrorHandler(logger),
-		Prefork:      config.GetBool("web.prefork"),
+		Prefork:      config.Web.Prefork,
 	})
 
 	// Recover middleware to prevent crashes from panics

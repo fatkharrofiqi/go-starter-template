@@ -7,23 +7,30 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// ValidationError represents a structured validation error
 type ValidationError struct {
 	Message string              `json:"message"`
 	Errors  map[string][]string `json:"errors"`
 }
 
-// Error makes ValidationError implement the error interface
 func (v *ValidationError) Error() string {
 	return v.Message
 }
 
-// ValidateStruct validates a struct and returns all validation errors
-func ValidateStruct(validate *validator.Validate, data interface{}) error {
+type Validation struct {
+	Validator *validator.Validate
+}
+
+func NewValidation() *Validation {
+	return &Validation{
+		Validator: validator.New(),
+	}
+}
+
+func (v *Validation) Validate(data interface{}) error {
 	errors := make(map[string][]string)
 
 	// Validate each field separately
-	val := validate.Struct(data)
+	val := v.Validator.Struct(data)
 	if val != nil {
 		validationErrors := val.(validator.ValidationErrors)
 
