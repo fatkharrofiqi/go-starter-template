@@ -30,8 +30,8 @@ func (r *UserRepository) FindByUUID(tx *gorm.DB, user *model.User, uuid string) 
 	return tx.Where("uuid = ?", uuid).First(&user).Error
 }
 
-func (r *UserRepository) Search(tx *gorm.DB, request *dto.SearchUserRequest) ([]model.User, int64, error) {
-	var user []model.User
+func (r *UserRepository) Search(tx *gorm.DB, request *dto.SearchUserRequest) ([]*model.User, int64, error) {
+	var user []*model.User
 	if err := tx.Scopes(r.FilterUser(request)).Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
 		return nil, 0, err
 	}

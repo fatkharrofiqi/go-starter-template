@@ -49,7 +49,7 @@ func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest
 
 	responses := make([]*dto.UserResponse, len(users))
 	for i, user := range users {
-		responses[i] = converter.UserToResponse(&user)
+		responses[i] = converter.UserToResponse(user)
 	}
 
 	return responses, total, nil
