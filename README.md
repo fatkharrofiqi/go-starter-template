@@ -121,6 +121,7 @@ Server will be available at `http://localhost:3000`.
 |--------------------------|--------|----------------------|
 | `/api/auth/register`     | POST   | Register new user    |
 | `/api/auth/login`        | POST   | Login user           |
+| `/api/auth/logout`       | POST   | Logout user          |
 | `/api/auth/refresh-token`| POST   | Refresh JWT token    |
 
 ### User Module
