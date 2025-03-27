@@ -1,4 +1,4 @@
-.PHONY: migrateup migratedown migrateschema run build install
+.PHONY: migrateup migratedown migrateschema run build install seed
 
 # Variables to construct DSN from config.yml using yq
 DB_DSN = $(shell yq e '.database.dsn' config.yml)
@@ -23,7 +23,10 @@ migrateschema:
 	migrate create -ext sql -dir db/migration -seq $(name)
 
 run:
-	go run cmd/main.go
+	go run cmd/app/main.go
 
 build:
 	go build -o main cmd/main.go
+
+seed:
+	go run cmd/seed/main.go

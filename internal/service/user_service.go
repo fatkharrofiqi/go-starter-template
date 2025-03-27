@@ -30,13 +30,7 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (*dto.UserRespon
 		return nil, apperrors.ErrUserNotFound
 	}
 
-	return &dto.UserResponse{
-		UUID:      user.UUID,
-		Name:      user.Name,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt.Unix(),
-		UpdatedAt: user.UpdatedAt.Unix(),
-	}, nil
+	return converter.UserToResponse(user), nil
 }
 
 // Search retrieves users based on search criteria.

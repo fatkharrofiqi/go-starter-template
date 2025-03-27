@@ -27,12 +27,20 @@ func (r *UserRepository) FindByEmail(tx *gorm.DB, user *model.User, email string
 }
 
 func (r *UserRepository) FindByUUID(tx *gorm.DB, user *model.User, uuid string) error {
-	return tx.Where("uuid = ?", uuid).First(&user).Error
+	return tx.Preload("Roles").
+		Preload("Permissions").
+		Preload("Roles.Permissions").
+		Where("uuid = ?", uuid).
+		First(&user).Error
 }
 
 func (r *UserRepository) Search(tx *gorm.DB, request *dto.SearchUserRequest) ([]*model.User, int64, error) {
 	var user []*model.User
-	if err := tx.Scopes(r.FilterUser(request)).Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
+	if err := tx.Scopes(r.FilterUser(request)).
+		Preload("Permissions").
+		Preload("Roles").
+		Preload("Roles.Permissions").
+		Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
 		return nil, 0, err
 	}
 
