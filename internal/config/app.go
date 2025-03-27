@@ -25,18 +25,19 @@ type BootstrapConfig struct {
 func Bootstrap(app *BootstrapConfig) {
 	// setup repositories
 	userRepository := repository.NewUserRepository()
+	tokenBlacklistRepository := repository.NewTokenBlacklist()
 
 	// setup use service
-	authService := service.NewAuthService(app.DB, userRepository, app.Config, app.Log)
+	authService := service.NewAuthService(app.DB, userRepository, tokenBlacklistRepository, app.Config, app.Log)
 	userService := service.NewUserService(app.DB, userRepository, app.Log)
 
 	// setup controller
 	welcomeController := controller.NewWelcomeController()
 	authController := controller.NewAuthController(authService, app.Log, app.Validation)
-	userController := controller.NewUserController(app.Log, userService)
+	userController := controller.NewUserController(userService, app.Log)
 
 	// setup middleware
-	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Log)
+	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Log, tokenBlacklistRepository)
 
 	// setup route
 	routeConfig := route.NewRouteConfig(app.App)

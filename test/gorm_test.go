@@ -1,20 +1,19 @@
 package test
 
 import (
+	"sync"
+	"testing"
+	"time"
+
 	"go-starter-template/internal/config"
 	"go-starter-template/internal/config/env"
-	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestNewDatabase ensures database connection initializes correctly
 func TestNewDatabase(t *testing.T) {
-	// Mock configuration
 	cfg := env.NewConfig()
-
-	// Mock logger
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 	logger.SetFormatter(&logrus.TextFormatter{
@@ -23,30 +22,38 @@ func TestNewDatabase(t *testing.T) {
 		FullTimestamp:   true,
 	})
 
-	// Initialize database connection
 	db := config.NewDatabase(cfg, logger)
-
-	// Ensure database instance is not nil
 	assert.NotNil(t, db, "Database instance should not be nil")
 
-	// Ensure we can get the underlying SQL DB
 	sqlDB, err := db.DB()
-	assert.NoError(t, err, "Getting underlying SQL DB should not return an error")
+	assert.NoError(t, err, "Getting SQL DB should not return an error")
+	defer sqlDB.Close()
 
-	// ✅ Correctly check connection pool settings
-	assert.Equal(t, 100, sqlDB.Stats().MaxOpenConnections, "Max open connections should match")
-	assert.Equal(t, 1, sqlDB.Stats().Idle, "Idle connections may be low at start")
+	// Log initial pool stats
+	stats := sqlDB.Stats()
+	logger.Infof("Initial - MaxOpen: %d, Idle: %d, InUse: %d",
+		stats.MaxOpenConnections, stats.Idle, stats.InUse)
+	assert.Equal(t, 100, stats.MaxOpenConnections, "Max open connections should be 100")
+	assert.GreaterOrEqual(t, stats.Idle, 1, "Initial idle should be at least 1")
 
-	// ✅ Run some queries to increase idle connections
-	_ = sqlDB.Ping() // Open a connection
-	_ = sqlDB.Ping()
-	_ = sqlDB.Ping()
+	// Simulate concurrent load to increase idle connections
+	var wg sync.WaitGroup
+	numGoroutines := 15 // More than idle limit (10) to force pool growth
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := sqlDB.Ping()
+			assert.NoError(t, err, "Ping should succeed")
+			time.Sleep(50 * time.Millisecond) // Hold connection briefly to keep it in use
+		}()
+	}
+	wg.Wait()
 
-	// ✅ Check if idle connections have increased
-	idleConnections := sqlDB.Stats().Idle
-	assert.GreaterOrEqual(t, idleConnections, 1, "Idle connections should increase after queries")
-
-	// Close database connection
-	err = sqlDB.Close()
-	assert.NoError(t, err, "Closing database should not return an error")
+	// Check stats after concurrent load
+	stats = sqlDB.Stats()
+	logger.Infof("After load - MaxOpen: %d, Idle: %d, InUse: %d",
+		stats.MaxOpenConnections, stats.Idle, stats.InUse)
+	assert.GreaterOrEqual(t, stats.Idle, 2, "Idle connections should increase after concurrent load")
+	assert.LessOrEqual(t, stats.Idle, 10, "Idle should not exceed configured max idle (10)")
 }

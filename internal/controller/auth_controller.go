@@ -88,3 +88,26 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 
 	return ctx.JSON(dto.WebResponse[*dto.TokenResponse]{Data: token})
 }
+
+func (c *AuthController) Logout(ctx *fiber.Ctx) error {
+	logutil.AccessLog(c.Logger, ctx, "Logout").Info("Processing logout request")
+
+	req := new(dto.LogoutRequest)
+	if err := ctx.BodyParser(req); err != nil {
+		c.Logger.Error("Failed to parse header")
+		return fiber.ErrUnauthorized
+	}
+
+	if err := c.Validation.Validate(req); err != nil {
+		c.Logger.Error("Payload required for logout")
+		return err
+	}
+
+	err := c.AuthService.Logout(ctx.UserContext(), req.AccessToken, req.RefreshToken)
+	if err != nil {
+		c.Logger.WithError(err).Error("Failed to logout")
+		return err
+	}
+
+	return ctx.JSON(dto.WebResponse[string]{Data: "Logout successfully"})
+}

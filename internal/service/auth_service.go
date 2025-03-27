@@ -20,14 +20,16 @@ type AuthService struct {
 	UserRepository *repository.UserRepository
 	Config         *env.Config
 	Logger         *logrus.Logger
+	TokenBlacklist *repository.TokenBlacklist
 }
 
-func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, config *env.Config, logger *logrus.Logger) *AuthService {
+func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, tokenBlacklist *repository.TokenBlacklist, config *env.Config, logger *logrus.Logger) *AuthService {
 	return &AuthService{
 		DB:             db,
 		UserRepository: userRepo,
 		Config:         config,
 		Logger:         logger,
+		TokenBlacklist: tokenBlacklist,
 	}
 }
 
@@ -123,6 +125,11 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 // RefreshToken generates a new access token using a valid refresh token.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error) {
+	if s.TokenBlacklist.IsBlacklisted(refreshToken) {
+		s.Logger.Error("token is blacklisted")
+		return nil, apperrors.ErrTokenBlacklisted
+	}
+
 	claims, err := jwtutil.ValidateToken(refreshToken, s.Config.JWT.RefreshSecret)
 	if err != nil {
 		s.Logger.WithError(err).Error("Invalid refresh token")
@@ -140,4 +147,19 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken, // Reuse the same refresh token
 	}, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, accessToken, refreshToken string) error {
+	// Add the token to a blacklist or revocation list.
+	if err := s.TokenBlacklist.Add(accessToken); err != nil {
+		s.Logger.WithError(err).Error("Failed to invalidate token")
+		return apperrors.ErrTokenInvalidation
+	}
+
+	if err := s.TokenBlacklist.Add(refreshToken); err != nil {
+		s.Logger.WithError(err).Error("Failed to invalidate refresh token")
+		return apperrors.ErrTokenInvalidation
+	}
+
+	return nil
 }

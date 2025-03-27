@@ -13,12 +13,12 @@ import (
 )
 
 type UserController struct {
-	Logger      *logrus.Logger
 	UserService *service.UserService
+	Logger      *logrus.Logger
 }
 
-func NewUserController(logger *logrus.Logger, userService *service.UserService) *UserController {
-	return &UserController{logger, userService}
+func NewUserController(userService *service.UserService, logger *logrus.Logger) *UserController {
+	return &UserController{userService, logger}
 }
 
 func (c *UserController) Me(ctx *fiber.Ctx) error {

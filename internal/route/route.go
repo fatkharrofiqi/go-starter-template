@@ -26,6 +26,7 @@ func (r *RouteConfig) RegisterAuthRoutes(authController *controller.AuthControll
 	{
 		auth.Post("/register", authController.Register)
 		auth.Post("/login", authController.Login)
+		auth.Post("/logout", authController.Logout)
 		auth.Post("/refresh-token", authController.RefreshToken)
 	}
 }

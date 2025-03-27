@@ -11,6 +11,11 @@ type RegisterRequest struct {
 	Name     string `json:"name" validate:"required,min=3"`
 }
 
+type LogoutRequest struct {
+	AccessToken  string `json:"access_token" validate:"required"`
+	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }

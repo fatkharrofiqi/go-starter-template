@@ -10,6 +10,9 @@ var (
 	// Authentication Errors
 	ErrInvalidEmailOrPassword = errors.New("invalid email or password")
 	ErrInvalidToken           = errors.New("invalid token")
+	ErrTokenInvalidation      = errors.New("failed to invalidate token")
+	ErrTokenBlacklisted       = errors.New("failed token is blacklist")
+	ErrAuthorizationHeader    = errors.New("authorization header is required")
 
 	// User Errors
 	ErrUserNotFound     = errors.New("user not found")
@@ -35,6 +38,8 @@ var errorStatusMap = map[error]int{
 	// 401 Unauthorized Errors
 	ErrInvalidEmailOrPassword: fiber.StatusUnauthorized,
 	ErrInvalidToken:           fiber.StatusUnauthorized,
+	ErrTokenInvalidation:      fiber.StatusUnauthorized,
+	ErrTokenBlacklisted:       fiber.StatusUnauthorized,
 
 	// 409 Conflict Errors
 	ErrUserAlreadyExists: fiber.StatusConflict,
