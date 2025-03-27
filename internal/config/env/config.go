@@ -13,6 +13,9 @@ type Config struct {
 	Web struct {
 		Port    int  `mapstructure:"port"`
 		Prefork bool `mapstructure:"prefork"`
+		Cors    struct {
+			AllowOrigins string `mapstructure:"allow_origins"`
+		} `mapstructure:"cors"`
 	} `mapstructure:"web"`
 	JWT struct {
 		Secret        string `mapstructure:"secret"`
@@ -32,24 +35,24 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	config := viper.New()
+	vp := viper.New()
 
 	// Set configuration file details
-	config.SetConfigName("config")
-	config.SetConfigType("yml")
-	config.AddConfigPath("./../")
-	config.AddConfigPath("./")
+	vp.SetConfigName("config")
+	vp.SetConfigType("yml")
+	vp.AddConfigPath("./../")
+	vp.AddConfigPath("./")
 
 	// Read the configuration file
-	if err := config.ReadInConfig(); err != nil {
+	if err := vp.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("fatal error reading config file: %w", err))
 	}
 
 	// Unmarshal into the Config struct
-	cfg := new(Config)
-	if err := config.Unmarshal(cfg); err != nil {
+	config := new(Config)
+	if err := vp.Unmarshal(config); err != nil {
 		panic(fmt.Errorf("fatal error unmarshaling config: %w", err))
 	}
 
-	return cfg
+	return config
 }
