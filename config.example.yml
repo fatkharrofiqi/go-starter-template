@@ -3,6 +3,8 @@ app:
 web:
   port: 3000
   prefork: true
+  cors:
+    allow_origins: "http://localhost:3000/"
 jwt:
   secret: "secret"
   refresh_secret: "refresh_secret"
