@@ -37,9 +37,6 @@ func (r *UserRepository) FindByUUID(tx *gorm.DB, user *model.User, uuid string) 
 func (r *UserRepository) Search(tx *gorm.DB, request *dto.SearchUserRequest) ([]*model.User, int64, error) {
 	var user []*model.User
 	if err := tx.Scopes(r.FilterUser(request)).
-		Preload("Permissions").
-		Preload("Roles").
-		Preload("Roles.Permissions").
 		Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
 		return nil, 0, err
 	}

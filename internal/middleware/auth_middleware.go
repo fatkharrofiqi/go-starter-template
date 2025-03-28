@@ -30,7 +30,6 @@ func AuthMiddleware(secret string, log *logrus.Logger, blacklist *repository.Tok
 			return fiber.NewError(fiber.ErrUnauthorized.Code, err.Error())
 		}
 
-		log.Debugf("User : %v", claims)
 		c.Locals("auth", claims)
 		return c.Next()
 	}

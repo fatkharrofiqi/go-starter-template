@@ -6,7 +6,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
 
 ## Features
 
-- ✅ **JWT Authentication** (Login, Register, Refresh Token)
+- ✅ **JWT Authentication** (Login, Register, Refresh Token, Logout with Blacklist Token)
 - ✅ **User Management Module**
 - ✅ **Input Validation** using **Validator**
 - ✅ **Configuration Management** with **Viper**
@@ -75,7 +75,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
 
 ### Prerequisites
 
-- [Go](https://golang.org/dl/) (1.19+ recommended)
+- [Go](https://golang.org/dl/) (1.24+ recommended)
 - [PostgreSQL](https://www.postgresql.org/)
 - [Make](https://www.gnu.org/software/make/) (for running commands)
 
