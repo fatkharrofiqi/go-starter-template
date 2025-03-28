@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -25,17 +26,19 @@ func NewDatabase(config *env.Config, log *logrus.Logger) *gorm.DB {
 			Colorful:                  true,
 			IgnoreRecordNotFoundError: true,
 			ParameterizedQueries:      true,
-			LogLevel:                  logger.Info,
+			LogLevel:                  config.Database.Log.Level,
 		}),
 	})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
 
+	db.Use(otelgorm.NewPlugin())
+
 	// Get the underlying SQL connection
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("failed to get database instance: %v", err)
+		log.WithError(err).Fatal("failed to get database instance")
 	}
 
 	// Configure connection pooling

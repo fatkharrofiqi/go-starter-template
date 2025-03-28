@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/viper"
+	"gorm.io/gorm/logger"
 )
 
 type Config struct {
@@ -31,7 +32,15 @@ type Config struct {
 			Max      int `mapstructure:"max"`
 			Lifetime int `mapstructure:"lifetime"`
 		} `mapstructure:"pool"`
+		Log struct {
+			Level logger.LogLevel `mapstructure:"level"`
+		} `mapstructure:"log"`
 	} `mapstructure:"database"`
+	Monitoring struct {
+		Otel struct {
+			Host string `mapstructure:"host"`
+		} `mapstructure:"otel"`
+	} `mapstructure:"monitoring"`
 }
 
 func NewConfig() *Config {

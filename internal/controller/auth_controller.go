@@ -4,24 +4,27 @@ import (
 	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/service"
-	"go-starter-template/internal/utils/logutil"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type AuthController struct {
 	AuthService *service.AuthService
 	Logger      *logrus.Logger
 	Validation  *validation.Validation
+	Tracer      trace.Tracer
 }
 
 func NewAuthController(authService *service.AuthService, logger *logrus.Logger, validator *validation.Validation) *AuthController {
-	return &AuthController{authService, logger, validator}
+	return &AuthController{authService, logger, validator, otel.Tracer("AuthController")}
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Logger, ctx, "Login").Info("Processing login request")
+	userContext, span := c.Tracer.Start(ctx.UserContext(), "Login")
+	defer span.End()
 
 	var req dto.LoginRequest
 	if err := ctx.BodyParser(&req); err != nil {
@@ -34,7 +37,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	token, err := c.AuthService.Login(ctx.UserContext(), req)
+	token, err := c.AuthService.Login(userContext, req)
 	if err != nil {
 		c.Logger.WithError(err).Warn("Invalid login attempt")
 		return err
@@ -44,7 +47,8 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Logger, ctx, "Register").Info("Processing registration request")
+	userContext, span := c.Tracer.Start(ctx.UserContext(), "Register")
+	defer span.End()
 
 	var req dto.RegisterRequest
 	if err := ctx.BodyParser(&req); err != nil {
@@ -57,7 +61,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	user, err := c.AuthService.Register(ctx.UserContext(), req)
+	user, err := c.AuthService.Register(userContext, req)
 	if err != nil {
 		c.Logger.WithError(err).Warn("User registration failed")
 		return err
@@ -67,7 +71,8 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Logger, ctx, "RefreshToken").Info("Processing refresh token request")
+	userContext, span := c.Tracer.Start(ctx.UserContext(), "RefreshToken")
+	defer span.End()
 
 	var req dto.RefreshTokenRequest
 	if err := ctx.BodyParser(&req); err != nil {
@@ -80,7 +85,7 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	token, err := c.AuthService.RefreshToken(ctx.UserContext(), req.RefreshToken)
+	token, err := c.AuthService.RefreshToken(userContext, req.RefreshToken)
 	if err != nil {
 		c.Logger.WithError(err).Warn("Invalid refresh token attempt")
 		return err
@@ -90,7 +95,8 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Logout(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Logger, ctx, "Logout").Info("Processing logout request")
+	userContext, span := c.Tracer.Start(ctx.UserContext(), "Logout")
+	defer span.End()
 
 	req := new(dto.LogoutRequest)
 	if err := ctx.BodyParser(req); err != nil {
@@ -103,7 +109,7 @@ func (c *AuthController) Logout(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	err := c.AuthService.Logout(ctx.UserContext(), req.AccessToken, req.RefreshToken)
+	err := c.AuthService.Logout(userContext, req.AccessToken, req.RefreshToken)
 	if err != nil {
 		c.Logger.WithError(err).Error("Failed to logout")
 		return err
