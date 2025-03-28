@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/go-playground/validator/v10 v10.25.0
+	github.com/gofiber/contrib/otelfiber/v2 v2.2.0
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
@@ -31,7 +32,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/gofiber/contrib/otelfiber/v2 v2.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -60,7 +60,6 @@ require (
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.3.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.59.0 // indirect
-	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
