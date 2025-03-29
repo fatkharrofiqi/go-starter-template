@@ -40,6 +40,7 @@ var errorStatusMap = map[error]int{
 	ErrInvalidToken:           fiber.StatusUnauthorized,
 	ErrTokenInvalidation:      fiber.StatusUnauthorized,
 	ErrTokenBlacklisted:       fiber.StatusUnauthorized,
+	ErrAuthorizationHeader:    fiber.StatusUnauthorized,
 
 	// 409 Conflict Errors
 	ErrUserAlreadyExists: fiber.StatusConflict,
