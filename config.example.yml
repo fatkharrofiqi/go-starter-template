@@ -16,3 +16,8 @@ database:
     idle: 10
     max: 100
     lifetime: 300
+  log:
+    level: 4
+monitoring:
+  otel: 
+    host: "host.docker.internal:4318"

@@ -11,6 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -21,6 +23,7 @@ type AuthService struct {
 	Config         *env.Config
 	Logger         *logrus.Logger
 	TokenBlacklist *repository.TokenBlacklist
+	Tracer         trace.Tracer
 }
 
 func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, tokenBlacklist *repository.TokenBlacklist, config *env.Config, logger *logrus.Logger) *AuthService {
@@ -30,13 +33,17 @@ func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, tokenBlack
 		Config:         config,
 		Logger:         logger,
 		TokenBlacklist: tokenBlacklist,
+		Tracer:         otel.Tracer("AuthService"),
 	}
 }
 
 // Login authenticates a user and returns JWT tokens.
 func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.TokenResponse, error) {
+	userContext, span := s.Tracer.Start(ctx, "Login")
+	defer span.End()
+
 	user := new(model.User)
-	err := s.UserRepository.FindByEmail(s.DB, user, req.Email)
+	err := s.UserRepository.FindByEmail(s.DB.WithContext(userContext), user, req.Email)
 	if err != nil {
 		s.Logger.WithError(err).Error("User not found during login")
 		return nil, apperrors.ErrInvalidEmailOrPassword
@@ -69,7 +76,10 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Tok
 
 // Register creates a new user with a hashed password.
 func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.UserResponse, error) {
-	tx := s.DB.WithContext(ctx).Begin()
+	userContext, span := s.Tracer.Start(ctx, "Register")
+	defer span.End()
+
+	tx := s.DB.WithContext(userContext).Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -125,6 +135,9 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 // RefreshToken generates a new access token using a valid refresh token.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error) {
+	_, span := s.Tracer.Start(ctx, "RefreshToken")
+	defer span.End()
+
 	if s.TokenBlacklist.IsBlacklisted(refreshToken) {
 		s.Logger.Error("token is blacklisted")
 		return nil, apperrors.ErrTokenBlacklisted
@@ -150,6 +163,9 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 }
 
 func (s *AuthService) Logout(ctx context.Context, accessToken, refreshToken string) error {
+	_, span := s.Tracer.Start(ctx, "Logout")
+	defer span.End()
+
 	// Add the token to a blacklist or revocation list.
 	if err := s.TokenBlacklist.Add(accessToken); err != nil {
 		s.Logger.WithError(err).Error("Failed to invalidate token")

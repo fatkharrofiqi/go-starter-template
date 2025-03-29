@@ -5,6 +5,7 @@ import (
 	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/utils/apperrors"
 
+	"github.com/gofiber/contrib/otelfiber/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/sirupsen/logrus"
@@ -20,6 +21,7 @@ func NewFiber(config *env.Config, logger *logrus.Logger) *fiber.App {
 
 	// Recover middleware to prevent crashes from panics
 	app.Use(recover.New())
+	app.Use(otelfiber.Middleware())
 
 	return app
 }

@@ -14,6 +14,8 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - ✅ **Database ORM** using **GORM (PostgreSQL)**
 - ✅ **Database Migrations** using **Migrate**
 - ✅ **HTTP Routing** using **Fiber**
+- ✅ **Middleware Support** for authentication
+- ✅ **Monitoring** with **Jaeger** and **OpenTelemetry** for distributed tracing
 - ✅ **Makefile** for easy project commands
 - ✅ **Middleware Support** for authentication
 - ✅ **YQ** for reading YAML configuration files
@@ -26,29 +28,37 @@ This is a **Go starter template** for building a backend service using **Gin** f
 ```
 📦 project-root
  ┣ 📂 cmd                # Application entry point
- ┃ ┗ 📜 main.go          # Main file
+ ┃ ┣ 📂 app
+ ┃ ┃ ┗ 📜 main.go        # Main file
+ ┃ ┗ 📂 seed
+ ┃   ┗ 📜 main.go        # Seeder main file
  ┣ 📂 db/migration       # Database migrations
  ┃ ┣ 📜 000001_create_user.up.sql
- ┃ ┗ 📜 000001_create_user.down.sql
+ ┃ ┣ 📜 000001_create_user.down.sql
+ ┃ ┣ 📜 000002_create_role_and_permission.down.sql
+ ┃ ┗ 📜 000002_create_role_and_permission.up.sql
  ┣ 📂 internal           # Internal business logic
  ┃ ┣ 📂 config           # Configuration files
+ ┃ ┃ ┣ 📂 env
+ ┃ ┃ ┣ 📂 monitoring
  ┃ ┃ ┣ 📂 validation
  ┃ ┃ ┣ 📜 app.go
- ┃ ┃ ┣ 📜 constant.go
  ┃ ┃ ┣ 📜 fiber.go
  ┃ ┃ ┣ 📜 gorm.go
  ┃ ┃ ┣ 📜 logrus.go
  ┃ ┃ ┣ 📜 migration.go
- ┃ ┃ ┣ 📜 validator.go
  ┃ ┃ ┗ 📜 viper.go
  ┃ ┣ 📂 controller       # HTTP controllers
  ┃ ┃ ┣ 📜 auth_controller.go
- ┃ ┃ ┗ 📜 user_controller.go
+ ┃ ┃ ┣ 📜 user_controller.go
+ ┃ ┃ ┗ 📜 welcome_controller.go
  ┃ ┣ 📂 dto             # Data Transfer Objects
+ ┃ ┃ ┣ 📂 converter     # Converter Data Transfer Objects
  ┃ ┃ ┣ 📜 auth_request.go
  ┃ ┃ ┗ 📜 auth_response.go
  ┃ ┣ 📂 middleware      # Middleware handlers
- ┃ ┃ ┗ 📜 auth_middleware.go
+ ┃ ┃ ┣ 📜 auth_middleware.go
+ ┃ ┃ ┗ 📜 cors_middleware.go
  ┃ ┣ 📂 model          # Database models
  ┃ ┃ ┗ 📜 user.go
  ┃ ┣ 📂 repository     # Database repositories

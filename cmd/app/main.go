@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go-starter-template/internal/config"
 	"go-starter-template/internal/config/env"
+	"go-starter-template/internal/config/monitoring"
 	"go-starter-template/internal/config/validation"
 )
 
@@ -14,6 +15,8 @@ func main() {
 	db := config.NewDatabase(cfg, log)
 	validation := validation.NewValidation()
 	app := config.NewFiber(cfg, log)
+	trace := monitoring.NewMonitoring(log, cfg)
+	defer trace.Shutdown()
 
 	config.Bootstrap(&config.BootstrapConfig{
 		DB:         db,
@@ -21,6 +24,7 @@ func main() {
 		Log:        log,
 		Config:     cfg,
 		Validation: validation,
+		Monitoring: trace,
 	})
 
 	webPort := cfg.Web.Port

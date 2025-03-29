@@ -2,6 +2,7 @@ package config
 
 import (
 	"go-starter-template/internal/config/env"
+	"go-starter-template/internal/config/monitoring"
 	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/controller"
 	"go-starter-template/internal/middleware"
@@ -20,6 +21,7 @@ type BootstrapConfig struct {
 	Log        *logrus.Logger
 	Config     *env.Config
 	Validation *validation.Validation
+	Monitoring *monitoring.Monitoring
 }
 
 func Bootstrap(app *BootstrapConfig) {

@@ -5,28 +5,31 @@ import (
 	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/apperrors"
-	"go-starter-template/internal/utils/logutil"
 	"math"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type UserController struct {
 	UserService *service.UserService
 	Logger      *logrus.Logger
+	Tracer      trace.Tracer
 }
 
 func NewUserController(userService *service.UserService, logger *logrus.Logger) *UserController {
-	return &UserController{userService, logger}
+	return &UserController{userService, logger, otel.Tracer("UserController")}
 }
 
 func (c *UserController) Me(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Logger, ctx, "Me").Info("Processing me request")
+	userContext, span := c.Tracer.Start(ctx.UserContext(), "Me")
+	defer span.End()
 
 	auth := middleware.GetUser(ctx)
 
-	user, err := c.UserService.GetUser(ctx.UserContext(), auth.UUID)
+	user, err := c.UserService.GetUser(userContext, auth.UUID)
 	if err != nil {
 		c.Logger.WithError(err).Error("user not found")
 		return err
@@ -38,7 +41,8 @@ func (c *UserController) Me(ctx *fiber.Ctx) error {
 }
 
 func (c *UserController) List(ctx *fiber.Ctx) error {
-	logutil.AccessLog(c.Logger, ctx, "List").Info("Processing list user request")
+	userContext, span := c.Tracer.Start(ctx.UserContext(), "List")
+	defer span.End()
 
 	req := new(dto.SearchUserRequest)
 	if err := ctx.QueryParser(req); err != nil {
@@ -47,7 +51,7 @@ func (c *UserController) List(ctx *fiber.Ctx) error {
 	}
 	req.SetDefault()
 
-	users, total, err := c.UserService.Search(ctx.UserContext(), req)
+	users, total, err := c.UserService.Search(userContext, req)
 	if err != nil {
 		c.Logger.WithError(err).Error("error searching user")
 		return err
