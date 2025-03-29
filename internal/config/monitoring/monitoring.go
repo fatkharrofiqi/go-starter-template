@@ -18,16 +18,11 @@ type Monitoring struct {
 }
 
 func NewMonitoring(log *logrus.Logger, config *env.Config) *Monitoring {
-	headers := map[string]string{
-		"content-type": "application/json",
-	}
-
 	// Create an OTLP exporter
 	exporter, err := otlptrace.New(
 		context.Background(),
 		otlptracehttp.NewClient(
 			otlptracehttp.WithEndpoint(config.Monitoring.Otel.Host),
-			otlptracehttp.WithHeaders(headers),
 			otlptracehttp.WithInsecure(),
 		),
 	)
