@@ -31,11 +31,20 @@ func (r *RouteConfig) RegisterAuthRoutes(authController *controller.AuthControll
 	}
 }
 
+func (r *RouteConfig) RegisterCsrfRoute(csrfController *controller.CsrfController, authMiddleware fiber.Handler) {
+	csrf := r.App.Group("/api/csrf")
+	{
+		csrf.Use(authMiddleware)
+		csrf.Post("/", csrfController.GenerateCsrfToken)
+	}
+}
+
 // RegisterUserRoutes defines user-related routes with authentication middleware
-func (r *RouteConfig) RegisterUserRoutes(userController *controller.UserController, authMiddleware fiber.Handler) {
+func (r *RouteConfig) RegisterUserRoutes(userController *controller.UserController, authMiddleware fiber.Handler, csrfMiddleware fiber.Handler) {
 	user := r.App.Group("/api/users")
 	{
 		user.Use(authMiddleware)
+		user.Use(csrfMiddleware)
 		user.Get("/", userController.List)
 		user.Get("/me", userController.Me)
 	}

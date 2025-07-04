@@ -20,6 +20,7 @@ type Config struct {
 	} `mapstructure:"web"`
 	JWT struct {
 		Secret        string `mapstructure:"secret"`
+		CsrfSecret    string `mapstructure:"csrf_secret"`
 		RefreshSecret string `mapstructure:"refresh_secret"`
 	} `mapstructure:"jwt"`
 	Log struct {

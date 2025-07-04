@@ -27,7 +27,7 @@ func AuthMiddleware(secret string, log *logrus.Logger, blacklist *repository.Tok
 		claims, err := jwtutil.ValidateToken(tokenString, secret)
 		if err != nil {
 			log.WithError(err).Error("invalid token")
-			return fiber.NewError(fiber.ErrUnauthorized.Code, err.Error())
+			return apperrors.ErrTokenIsExpired
 		}
 
 		c.Locals("auth", claims)

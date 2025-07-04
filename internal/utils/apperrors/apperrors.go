@@ -13,6 +13,12 @@ var (
 	ErrTokenInvalidation      = errors.New("failed to invalidate token")
 	ErrTokenBlacklisted       = errors.New("failed token is blacklist")
 	ErrAuthorizationHeader    = errors.New("authorization header is required")
+	ErrTokenIsExpired         = errors.New("token is expired")
+
+	// Access Urls Errors
+	ErrCsrfTokenHeader      = errors.New("csrf token is required")
+	ErrCsrfTokenInvalidPath = errors.New("csrf token is invalid for this url")
+	ErrCsrfTokenIsExpired   = errors.New("csrf token is expired")
 
 	// User Errors
 	ErrUserNotFound     = errors.New("user not found")
@@ -41,6 +47,10 @@ var errorStatusMap = map[error]int{
 	ErrTokenInvalidation:      fiber.StatusUnauthorized,
 	ErrTokenBlacklisted:       fiber.StatusUnauthorized,
 	ErrAuthorizationHeader:    fiber.StatusUnauthorized,
+	ErrCsrfTokenHeader:        fiber.StatusUnauthorized,
+	ErrCsrfTokenInvalidPath:   fiber.StatusUnauthorized,
+	ErrCsrfTokenIsExpired:     fiber.StatusUnauthorized,
+	ErrTokenIsExpired:         fiber.StatusUnauthorized,
 
 	// 409 Conflict Errors
 	ErrUserAlreadyExists: fiber.StatusConflict,

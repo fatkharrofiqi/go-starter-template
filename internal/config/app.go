@@ -37,13 +37,16 @@ func Bootstrap(app *BootstrapConfig) {
 	welcomeController := controller.NewWelcomeController()
 	authController := controller.NewAuthController(authService, app.Log, app.Validation)
 	userController := controller.NewUserController(userService, app.Log)
+	csrfController := controller.NewCsrfController(app.Log, app.Config)
 
 	// setup middleware
 	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Log, tokenBlacklistRepository)
+	csrfMiddleware := middleware.CsrfMiddleware(app.Config.JWT.CsrfSecret, app.Log, tokenBlacklistRepository)
 
 	// setup route
 	routeConfig := route.NewRouteConfig(app.App)
 	routeConfig.WelcomeRoutes(welcomeController)
 	routeConfig.RegisterAuthRoutes(authController)
-	routeConfig.RegisterUserRoutes(userController, authMiddleware)
+	routeConfig.RegisterCsrfRoute(csrfController, authMiddleware)
+	routeConfig.RegisterUserRoutes(userController, authMiddleware, csrfMiddleware)
 }
