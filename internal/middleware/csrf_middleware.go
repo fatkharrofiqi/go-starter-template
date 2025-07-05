@@ -9,16 +9,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func CsrfMiddleware(secret string, log *logrus.Logger, blacklist *repository.TokenBlacklist) fiber.Handler {
+func CsrfMiddleware(secret string, log *logrus.Logger, blacklist repository.TokenBlacklistRepository) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		csrfToken := c.Get("X-CSRF-Token")
 		if csrfToken == "" {
-			log.Error("access token is required")
+			log.Error("csrf token is required")
 			return apperrors.ErrCsrfTokenHeader
 		}
 
-		if blacklist.IsBlacklisted(csrfToken) {
-			log.Error("access token is already used")
+		if _, err := blacklist.IsBlacklisted(csrfToken); err != nil {
+			log.Error("csrf token is already used")
 			return apperrors.ErrTokenBlacklisted
 		}
 
@@ -29,10 +29,14 @@ func CsrfMiddleware(secret string, log *logrus.Logger, blacklist *repository.Tok
 		}
 
 		if claims.Path != c.Path() {
+			log.WithError(err).Error("csrf token is invalid for this url")
 			return apperrors.ErrCsrfTokenInvalidPath
 		}
 
-		blacklist.Add(csrfToken)
+		if err := blacklist.Add(csrfToken); err != nil {
+			log.WithError(err).Error("can't blacklist the csrf token")
+			return apperrors.ErrCantBlacklistToken
+		}
 
 		return c.Next()
 	}

@@ -20,6 +20,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - ✅ **Middleware Support** for authentication
 - ✅ **YQ** for reading YAML configuration files
 - ✅ **Unit testing** using **Testify** 
+- ✅ **Performance testing** using **K6**
 
 ---
 
@@ -72,6 +73,8 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┃ ┣ 📂 jwtutil
  ┃ ┃ ┗ 📂 logutil
  ┣ 📂 test            # Testing
+ ┃ ┣ 📂 performance   # K6 performance tests
+ ┃ ┃ ┣ 📜 get-user.js
  ┃ 📜 config.example.yml
  ┃ 📜 config.yml
  ┣ 📜 go.mod         # Go module dependencies
@@ -88,6 +91,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - [Go](https://golang.org/dl/) (1.24+ recommended)
 - [PostgreSQL](https://www.postgresql.org/)
 - [Make](https://www.gnu.org/software/make/) (for running commands)
+- [K6](https://k6.io/) (for performance testing)
 
 ### Install Dependencies
 
@@ -101,6 +105,21 @@ To install `yq`, use the following command:
 
 ```sh
 sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && sudo chmod +x /usr/local/bin/yq
+```
+
+### Install K6
+
+To install `k6` for performance testing:
+
+```sh
+# Linux/Ubuntu
+sudo apt-get install k6
+
+# macOS
+brew install k6
+
+# Windows (using Chocolatey)
+choco install k6
 ```
 
 ### Environment Configuration
@@ -139,6 +158,27 @@ Server will be available at `http://localhost:3000`.
 | Endpoint          | Method | Description      |
 |-------------------|--------|------------------|
 | `/api/users/me`   | GET    | Get current user |
+
+---
+
+## Testing
+
+### Unit Testing
+
+Run unit tests using:
+
+```sh
+go test ./...
+```
+
+### Performance Testing
+
+Run performance tests using K6:
+
+```sh
+# Run specific performance test
+k6 run test/performance/get-user.js
+```
 
 ---
 

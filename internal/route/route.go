@@ -41,6 +41,12 @@ func (r *RouteConfig) RegisterCsrfRoute(csrfController *controller.CsrfControlle
 
 // RegisterUserRoutes defines user-related routes with authentication middleware
 func (r *RouteConfig) RegisterUserRoutes(userController *controller.UserController, authMiddleware fiber.Handler, csrfMiddleware fiber.Handler) {
+	userWithoutCsrf := r.App.Group("/api/userss")
+	{
+		userWithoutCsrf.Use(authMiddleware)
+		userWithoutCsrf.Get("/me", userController.Me)
+	}
+
 	user := r.App.Group("/api/users")
 	{
 		user.Use(authMiddleware)

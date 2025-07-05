@@ -23,6 +23,18 @@ type Config struct {
 		CsrfSecret    string `mapstructure:"csrf_secret"`
 		RefreshSecret string `mapstructure:"refresh_secret"`
 	} `mapstructure:"jwt"`
+	Redis struct {
+		Address  string `mapstructure:"address"`
+		Password string `mapstructure:"password"`
+		DB       int    `mapstructure:"db"`
+		Pool     struct {
+			Size        int   `mapstructure:"size"`
+			MinIdle     int   `mapstructure:"min_idle"`
+			MaxIdle     int   `mapstructure:"max_idle"`
+			Lifetime    int64 `mapstructure:"lifetime"`
+			IdleTimeout int64 `mapstructure:"idle_timeout"`
+		} `mapstructure:"pool"`
+	} `mapstructure:"redis"`
 	Log struct {
 		Level int `mapstructure:"level"`
 	} `mapstructure:"log"`

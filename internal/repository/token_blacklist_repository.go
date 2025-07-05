@@ -1,8 +1,22 @@
 package repository
 
+import (
+	"context"
+	"sync"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+type TokenBlacklistRepository interface {
+	Add(token string) error
+	IsBlacklisted(token string) (bool, error)
+}
+
 type TokenBlacklist struct {
 	// This could be a map, a database table, or any other storage mechanism.
 	blacklist map[string]struct{}
+	mutex     sync.RWMutex
 }
 
 func NewTokenBlacklist() *TokenBlacklist {
@@ -10,11 +24,42 @@ func NewTokenBlacklist() *TokenBlacklist {
 }
 
 func (tb *TokenBlacklist) Add(token string) error {
+	tb.mutex.Lock()
+	defer tb.mutex.Unlock()
 	tb.blacklist[token] = struct{}{}
 	return nil
 }
 
-func (tb *TokenBlacklist) IsBlacklisted(token string) bool {
+func (tb *TokenBlacklist) IsBlacklisted(token string) (bool, error) {
+	tb.mutex.RLock()
+	defer tb.mutex.RUnlock()
 	_, exists := tb.blacklist[token]
-	return exists
+	return exists, nil
+}
+
+type RedisTokenBlacklist struct {
+	client *redis.Client
+	ctx    context.Context
+}
+
+func NewRedisTokenBlacklist(client *redis.Client) *RedisTokenBlacklist {
+	return &RedisTokenBlacklist{
+		client: client,
+		ctx:    context.Background(),
+	}
+}
+
+func (r *RedisTokenBlacklist) Add(token string) error {
+	return r.client.Set(r.ctx, token, "blacklisted", 24*time.Hour).Err()
+}
+
+func (r *RedisTokenBlacklist) IsBlacklisted(token string) (bool, error) {
+	result, err := r.client.Get(r.ctx, token).Result()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return result == "blacklisted", nil
 }

@@ -22,11 +22,11 @@ type AuthService struct {
 	UserRepository *repository.UserRepository
 	Config         *env.Config
 	Logger         *logrus.Logger
-	TokenBlacklist *repository.TokenBlacklist
+	TokenBlacklist repository.TokenBlacklistRepository
 	Tracer         trace.Tracer
 }
 
-func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, tokenBlacklist *repository.TokenBlacklist, config *env.Config, logger *logrus.Logger) *AuthService {
+func NewAuthService(db *gorm.DB, userRepo *repository.UserRepository, tokenBlacklist repository.TokenBlacklistRepository, config *env.Config, logger *logrus.Logger) *AuthService {
 	return &AuthService{
 		DB:             db,
 		UserRepository: userRepo,
@@ -138,7 +138,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	_, span := s.Tracer.Start(ctx, "RefreshToken")
 	defer span.End()
 
-	if s.TokenBlacklist.IsBlacklisted(refreshToken) {
+	if _, err := s.TokenBlacklist.IsBlacklisted(refreshToken); err != nil {
 		s.Logger.Error("token is blacklisted")
 		return nil, apperrors.ErrTokenBlacklisted
 	}

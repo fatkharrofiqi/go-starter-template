@@ -5,6 +5,7 @@ import (
 	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/utils/apperrors"
 
+	"github.com/goccy/go-json"
 	"github.com/gofiber/contrib/otelfiber/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -17,6 +18,8 @@ func NewFiber(config *env.Config, logger *logrus.Logger) *fiber.App {
 		AppName:      config.App.Name,
 		ErrorHandler: NewErrorHandler(logger),
 		Prefork:      config.Web.Prefork,
+		JSONEncoder:  json.Marshal,
+		JSONDecoder:  json.Unmarshal,
 	})
 
 	// Recover middleware to prevent crashes from panics

@@ -11,6 +11,7 @@ import (
 	"go-starter-template/internal/service"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -22,25 +23,27 @@ type BootstrapConfig struct {
 	Config     *env.Config
 	Validation *validation.Validation
 	Monitoring *monitoring.Monitoring
+	Redis      *redis.Client
 }
 
 func Bootstrap(app *BootstrapConfig) {
 	// setup repositories
 	userRepository := repository.NewUserRepository()
-	tokenBlacklistRepository := repository.NewTokenBlacklist()
+	tokenBlacklistRepository := repository.NewRedisTokenBlacklist(app.Redis)
 
 	// setup use service
 	authService := service.NewAuthService(app.DB, userRepository, tokenBlacklistRepository, app.Config, app.Log)
 	userService := service.NewUserService(app.DB, userRepository, app.Log)
+	redisService := service.NewRedisService(app.Redis, app.Log)
 
 	// setup controller
 	welcomeController := controller.NewWelcomeController()
 	authController := controller.NewAuthController(authService, app.Log, app.Validation)
-	userController := controller.NewUserController(userService, app.Log)
+	userController := controller.NewUserController(userService, redisService, app.Log)
 	csrfController := controller.NewCsrfController(app.Log, app.Config)
 
 	// setup middleware
-	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Log, tokenBlacklistRepository)
+	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Redis, app.Log, tokenBlacklistRepository)
 	csrfMiddleware := middleware.CsrfMiddleware(app.Config.JWT.CsrfSecret, app.Log, tokenBlacklistRepository)
 
 	// setup route

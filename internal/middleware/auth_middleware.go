@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
-func AuthMiddleware(secret string, log *logrus.Logger, blacklist *repository.TokenBlacklist) fiber.Handler {
+func AuthMiddleware(secret string, redis *redis.Client, log *logrus.Logger, blacklist repository.TokenBlacklistRepository) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -19,7 +20,7 @@ func AuthMiddleware(secret string, log *logrus.Logger, blacklist *repository.Tok
 		}
 
 		tokenString := strings.Split(authHeader, "Bearer ")[1]
-		if blacklist.IsBlacklisted(tokenString) {
+		if _, err := blacklist.IsBlacklisted(tokenString); err != nil {
 			log.Error("token is blacklisted")
 			return apperrors.ErrTokenBlacklisted
 		}

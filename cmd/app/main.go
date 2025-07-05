@@ -13,6 +13,7 @@ func main() {
 	cfg := env.NewConfig()
 	log := config.NewLogger(cfg)
 	db := config.NewDatabase(cfg, log)
+	redis := config.NewRedis(cfg, log)
 	validation := validation.NewValidation()
 	app := config.NewFiber(cfg, log)
 	trace := monitoring.NewMonitoring(log, cfg)
@@ -25,6 +26,7 @@ func main() {
 		Config:     cfg,
 		Validation: validation,
 		Monitoring: trace,
+		Redis:      redis,
 	})
 
 	webPort := cfg.Web.Port
