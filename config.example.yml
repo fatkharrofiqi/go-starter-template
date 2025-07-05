@@ -8,6 +8,16 @@ web:
 jwt:
   secret: "secret"
   refresh_secret: "refresh_secret"
+redis:
+  address: "localhost:6379"
+  password: "password"
+  db: "0"
+  pool: 
+    size: 10
+    min_idle: 0
+    max_idle: 0
+    lifetime: 300
+    idle_timeout: 60
 log:
   level: 6
 database:
