@@ -6,7 +6,6 @@ import (
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/apperrors"
 	"math"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -15,14 +14,13 @@ import (
 )
 
 type UserController struct {
-	UserService  *service.UserService
-	RedisService *service.RedisService
-	Logger       *logrus.Logger
-	Tracer       trace.Tracer
+	UserService *service.UserService
+	Logger      *logrus.Logger
+	Tracer      trace.Tracer
 }
 
-func NewUserController(userService *service.UserService, redisService *service.RedisService, logger *logrus.Logger) *UserController {
-	return &UserController{userService, redisService, logger, otel.Tracer("UserController")}
+func NewUserController(userService *service.UserService, logger *logrus.Logger) *UserController {
+	return &UserController{userService, logger, otel.Tracer("UserController")}
 }
 
 func (c *UserController) Me(ctx *fiber.Ctx) error {
@@ -30,31 +28,14 @@ func (c *UserController) Me(ctx *fiber.Ctx) error {
 	defer span.End()
 
 	auth := middleware.GetUser(ctx)
-	cacheKey := "user:me:" + auth.UUID
 
-	var response dto.WebResponse[*dto.UserResponse]
-
-	// 🔍 Check Redis cache first
-	if cached, found := c.RedisService.Get(userContext, cacheKey); found {
-		c.Logger.Info("user profile retrieved from Redis cache")
-		return ctx.Type("json").SendString(cached)
-	}
-
-	// 🗃️ Cache miss: fetch from DB
 	user, err := c.UserService.GetUser(userContext, auth.UUID)
 	if err != nil {
 		c.Logger.WithError(err).Error("user not found")
 		return err
 	}
 
-	response = dto.WebResponse[*dto.UserResponse]{
-		Data: user,
-	}
-
-	// 💾 Store in Redis with TTL
-	c.RedisService.Set(userContext, cacheKey, response, 10*time.Minute)
-
-	return ctx.JSON(response)
+	return ctx.Type("json").SendString(user)
 }
 
 func (c *UserController) List(ctx *fiber.Ctx) error {

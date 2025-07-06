@@ -20,8 +20,12 @@ var (
 	ErrCsrfTokenInvalidPath = errors.New("csrf token is invalid for this url")
 	ErrCsrfTokenIsExpired   = errors.New("csrf token is expired")
 
-	// Redis error
+	// Redis Errors
 	ErrCantBlacklistToken = errors.New("can't blacklist the token")
+	ErrRedisSet           = errors.New("can't set to redis")
+
+	// Tranform Errors
+	ErrMarshal = errors.New("failed to marshal")
 
 	// User Errors
 	ErrUserNotFound     = errors.New("user not found")
@@ -66,6 +70,8 @@ var errorStatusMap = map[error]int{
 	ErrAccessTokenGeneration:  fiber.StatusInternalServerError,
 	ErrRefreshTokenGeneration: fiber.StatusInternalServerError,
 	ErrCantBlacklistToken:     fiber.StatusInternalServerError,
+	ErrMarshal:                fiber.StatusInternalServerError,
+	ErrRedisSet:               fiber.StatusInternalServerError,
 
 	// 404 Not Found Errors
 	ErrUserNotFound:     fiber.StatusNotFound,

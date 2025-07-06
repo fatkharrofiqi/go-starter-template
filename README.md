@@ -21,6 +21,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - ✅ **YQ** for reading YAML configuration files
 - ✅ **Unit testing** using **Testify** 
 - ✅ **Performance testing** using **K6**
+- ✅ **Redis Integration** for caching
 
 ---
 

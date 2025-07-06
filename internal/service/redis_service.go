@@ -2,28 +2,35 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type RedisService struct {
 	Client *redis.Client
 	Logger *logrus.Logger
+	Tracer trace.Tracer
 }
 
 func NewRedisService(client *redis.Client, logger *logrus.Logger) *RedisService {
 	return &RedisService{
 		Client: client,
 		Logger: logger,
+		Tracer: otel.Tracer("RedisService"),
 	}
 }
 
 // Get retrieves a string JSON value from Redis result.
 func (r *RedisService) Get(ctx context.Context, key string) (string, bool) {
-	cached, err := r.Client.Get(ctx, key).Result()
+	userContext, span := r.Tracer.Start(ctx, "Get")
+	defer span.End()
+
+	cached, err := r.Client.Get(userContext, key).Result()
 	if err == redis.Nil {
 		// Cache miss
 		return "", false
@@ -40,14 +47,19 @@ func (r *RedisService) Get(ctx context.Context, key string) (string, bool) {
 }
 
 // Set marshals value to JSON and stores it in Redis with TTL.
-func (r *RedisService) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) {
-	jsonData, err := json.Marshal(value)
+func (r *RedisService) Set(ctx context.Context, key string, data interface{}, ttl time.Duration) (string, error) {
+	userContext, span := r.Tracer.Start(ctx, "Set")
+	defer span.End()
+
+	json, err := json.Marshal(data)
 	if err != nil {
-		r.Logger.WithError(err).Error("failed to marshal data for redis")
-		return
+		r.Logger.WithError(err).Warn("failed to marshal user response")
+		return "", err
+	}
+	if err := r.Client.Set(userContext, key, json, ttl).Err(); err != nil {
+		r.Logger.WithError(err).Error("failed to store data to redis")
+		return "", err
 	}
 
-	if setErr := r.Client.Set(ctx, key, jsonData, ttl).Err(); setErr != nil {
-		r.Logger.WithError(setErr).Error("failed to store data to redis")
-	}
+	return string(json), nil
 }

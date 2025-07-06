@@ -33,13 +33,13 @@ func Bootstrap(app *BootstrapConfig) {
 
 	// setup use service
 	authService := service.NewAuthService(app.DB, userRepository, tokenBlacklistRepository, app.Config, app.Log)
-	userService := service.NewUserService(app.DB, userRepository, app.Log)
 	redisService := service.NewRedisService(app.Redis, app.Log)
+	userService := service.NewUserService(app.DB, userRepository, redisService, app.Log)
 
 	// setup controller
 	welcomeController := controller.NewWelcomeController()
 	authController := controller.NewAuthController(authService, app.Log, app.Validation)
-	userController := controller.NewUserController(userService, redisService, app.Log)
+	userController := controller.NewUserController(userService, app.Log)
 	csrfController := controller.NewCsrfController(app.Log, app.Config)
 
 	// setup middleware
