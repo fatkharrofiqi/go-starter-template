@@ -47,7 +47,7 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) 
 
 	result, err := s.RedisService.Set(userContext, cacheKey, dto.WebResponse[*dto.UserResponse]{
 		Data: converter.UserToResponse(user),
-	}, 5*time.Second)
+	}, 5*time.Minute)
 
 	if err != nil {
 		s.Log.WithError(err).Warn("failed to save user response to redis")
