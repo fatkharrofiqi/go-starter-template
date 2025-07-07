@@ -54,7 +54,7 @@ func (r *RedisTokenBlacklist) Add(token string, duration time.Duration) error {
 }
 
 func (r *RedisTokenBlacklist) IsBlacklisted(token string) (bool, error) {
-	result, err := r.client.Get(r.ctx, token).Result()
+	result, err := r.client.Get(r.ctx, "blacklist:"+token).Result()
 	if err == redis.Nil {
 		return false, nil
 	}
