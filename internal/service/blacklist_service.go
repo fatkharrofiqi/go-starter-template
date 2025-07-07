@@ -49,7 +49,7 @@ func (b *BlacklistService) Add(token string) error {
 		return nil
 	}
 
-	if err := b.BlacklistRepository.Add(token, ttl); err != nil {
+	if err := b.BlacklistRepository.Add(tokenHash, ttl); err != nil {
 		return apperrors.ErrRedisSet
 	}
 
