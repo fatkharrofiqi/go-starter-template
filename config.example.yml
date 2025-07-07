@@ -7,7 +7,11 @@ web:
     allow_origins: "http://localhost:3000/"
 jwt:
   secret: "secret"
+  csrf_secret: "csrf_secret"
   refresh_secret: "refresh_secret"
+  csrf_token_expiration: 900 #second (15 minutes)
+  access_token_expiration: 900 #second (15 minutes)
+  refresh_token_expiration: 60480 #second (7 days)
 redis:
   address: "localhost:6379"
   password: "password"

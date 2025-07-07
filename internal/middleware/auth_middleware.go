@@ -1,17 +1,15 @@
 package middleware
 
 import (
-	"go-starter-template/internal/repository"
+	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/apperrors"
-	"go-starter-template/internal/utils/jwtutil"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
-func AuthMiddleware(secret string, redis *redis.Client, log *logrus.Logger, blacklist repository.TokenBlacklistRepository) fiber.Handler {
+func AuthMiddleware(jwtService *service.JwtService, blacklistService *service.BlacklistService, log *logrus.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -19,15 +17,25 @@ func AuthMiddleware(secret string, redis *redis.Client, log *logrus.Logger, blac
 			return apperrors.ErrAuthorizationHeader
 		}
 
-		tokenString := strings.Split(authHeader, "Bearer ")[1]
-		if _, err := blacklist.IsBlacklisted(tokenString); err != nil {
-			log.Error("token is blacklisted")
-			return apperrors.ErrTokenBlacklisted
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			log.Warn("bearer not found in Authorization header")
+			return apperrors.ErrBearerHeader
 		}
 
-		claims, err := jwtutil.ValidateToken(tokenString, secret)
+		accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+		if accessToken == "" {
+			log.Warn("access token not found in Authorization header")
+			return apperrors.ErrAccessTokenMissing
+		}
+
+		if err := blacklistService.IsTokenBlacklisted(accessToken); err != nil {
+			log.Warn("already logout")
+			return err
+		}
+
+		claims, err := jwtService.ValidateAccessToken(accessToken)
 		if err != nil {
-			log.WithError(err).Error("invalid token")
+			log.WithError(err).Error("token is expired")
 			return apperrors.ErrTokenIsExpired
 		}
 
@@ -36,6 +44,6 @@ func AuthMiddleware(secret string, redis *redis.Client, log *logrus.Logger, blac
 	}
 }
 
-func GetUser(ctx *fiber.Ctx) *jwtutil.Claims {
-	return ctx.Locals("auth").(*jwtutil.Claims)
+func GetUser(ctx *fiber.Ctx) *service.Claims {
+	return ctx.Locals("auth").(*service.Claims)
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type TokenBlacklistRepository interface {
-	Add(token string) error
+	Add(token string, duration time.Duration) error
 	IsBlacklisted(token string) (bool, error)
 }
 
@@ -23,7 +23,7 @@ func NewTokenBlacklist() *TokenBlacklist {
 	return &TokenBlacklist{blacklist: make(map[string]struct{})}
 }
 
-func (tb *TokenBlacklist) Add(token string) error {
+func (tb *TokenBlacklist) Add(token string, duration time.Duration) error {
 	tb.mutex.Lock()
 	defer tb.mutex.Unlock()
 	tb.blacklist[token] = struct{}{}
@@ -49,8 +49,8 @@ func NewRedisTokenBlacklist(client *redis.Client) *RedisTokenBlacklist {
 	}
 }
 
-func (r *RedisTokenBlacklist) Add(token string) error {
-	return r.client.Set(r.ctx, token, "blacklisted", 24*time.Hour).Err()
+func (r *RedisTokenBlacklist) Add(token string, duration time.Duration) error {
+	return r.client.Set(r.ctx, "blacklist:"+token, "1", duration).Err()
 }
 
 func (r *RedisTokenBlacklist) IsBlacklisted(token string) (bool, error) {
@@ -61,5 +61,5 @@ func (r *RedisTokenBlacklist) IsBlacklisted(token string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return result == "blacklisted", nil
+	return result == "1", nil
 }

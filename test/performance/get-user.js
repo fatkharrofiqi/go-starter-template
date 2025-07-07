@@ -9,7 +9,7 @@ export const options = {
 		{ duration: "10s", target: 0 }, // Ramp down to 0 VUs in 10s
 	],
 	thresholds: {
-		http_req_duration: ["p(95)<200"], // 95% of requests must be below 200ms
+		http_req_duration: ["p(99)<200"], // 99% of requests must be below 200ms
 	},
 };
 
@@ -71,7 +71,7 @@ export function setup() {
 	console.log(
 		"Test scenario: 10s ramp-up to 50 VUs, 50s at 100 VUs, 10s ramp-down",
 	);
-	console.log("Threshold: 95th percentile response time <= 200ms");
+	console.log("Threshold: 99th percentile response time <= 200ms");
 
 	return {
 		accessToken: accessToken,
@@ -88,7 +88,7 @@ export default function (data) {
 
 	const { accessToken } = data;	
 	// Step 1: Get user profile
-	const userResponse = http.get(`${BASE_URL}/api/userss/me`, {
+	const userResponse = http.get(`${BASE_URL}/api/users/me`, {
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
 		},

@@ -25,6 +25,57 @@ This is a **Go starter template** for building a backend service using **Gin** f
 
 ---
 
+## Authentication Flow
+
+This application implements a secure JWT-based authentication system with cookie-based refresh token storage. Here's how it works:
+
+### 🔐 Registration Flow
+1. User submits registration data (email, password, etc.)
+2. System validates input and creates new user account
+3. User receives success response and can proceed to login
+
+### 🔑 Login Flow
+1. User submits login credentials (email/username and password)
+2. System validates credentials against database
+3. If valid, system generates:
+   - **Access Token** (JWT) - Short-lived (15-30 minutes)
+   - **Refresh Token** (JWT) - Long-lived (7-30 days)
+4. Access token is returned in response body
+5. **Refresh token is stored in HTTP-only cookie** for security
+6. User can access protected routes using the access token
+
+### 🔄 Token Refresh Flow
+1. When access token expires, client receives 401 Unauthorized
+2. Client automatically calls `/api/auth/refresh-token` endpoint
+3. System reads refresh token from HTTP-only cookie
+4. If refresh token is valid and not blacklisted:
+   - Generate new access token
+   - Optionally rotate refresh token (generate new one)
+   - Return new access token in response
+   - Store new refresh token in cookie (with refresh token rotation)
+5. Client uses new access token for subsequent requests
+
+### 🚪 Logout Flow
+1. User calls `/api/auth/logout` endpoint
+2. System adds current refresh token to blacklist
+3. HTTP-only cookie containing refresh token is cleared
+4. User is successfully logged out
+
+### 🛡️ Security Features
+- **HTTP-only cookies**: Refresh tokens stored in HTTP-only cookies prevent XSS attacks
+- **Token blacklisting**: Logout functionality blacklists refresh tokens
+- **Short-lived access tokens**: Minimizes exposure if access token is compromised
+- **Secure cookie attributes**: Cookies use Secure and SameSite attributes
+- **Token rotation**: Optional refresh token rotation for enhanced security
+
+### 📱 Client Implementation Notes
+- Access tokens should be stored in memory (not localStorage)
+- Implement automatic token refresh on 401 responses
+- Handle logout by clearing local access token and calling logout endpoint
+- Cookies are handled automatically by browsers
+
+---
+
 ## Project Structure
 
 ```
@@ -71,8 +122,7 @@ This is a **Go starter template** for building a backend service using **Gin** f
  ┃ ┣ 📂 service       # Business logic
  ┃ ┃ ┗ 📜 auth_service.go
  ┃ ┣ 📂 utils         # Utility packages
- ┃ ┃ ┣ 📂 jwtutil
- ┃ ┃ ┗ 📂 logutil
+ ┃ ┃ ┗ 📂 apperrors
  ┣ 📂 test            # Testing
  ┃ ┣ 📂 performance   # K6 performance tests
  ┃ ┃ ┣ 📜 get-user.js
@@ -147,18 +197,56 @@ Server will be available at `http://localhost:3000`.
 
 ### Auth Module
 
-| Endpoint                 | Method | Description          |
-|--------------------------|--------|----------------------|
-| `/api/auth/register`     | POST   | Register new user    |
-| `/api/auth/login`        | POST   | Login user           |
-| `/api/auth/logout`       | POST   | Logout user          |
-| `/api/auth/refresh-token`| POST   | Refresh JWT token    |
+| Endpoint                 | Method | Description          | Auth Required |
+|--------------------------|--------|----------------------|---------------|
+| `/api/auth/register`     | POST   | Register new user    | No            |
+| `/api/auth/login`        | POST   | Login user           | No            |
+| `/api/auth/logout`       | POST   | Logout user          | Yes           |
+| `/api/auth/refresh-token`| POST   | Refresh JWT token    | No*           |
+
+*Requires valid refresh token in HTTP-only cookie
 
 ### User Module
 
-| Endpoint          | Method | Description      |
-|-------------------|--------|------------------|
-| `/api/users/me`   | GET    | Get current user |
+| Endpoint          | Method | Description      | Auth Required |
+|-------------------|--------|------------------|---------------|
+| `/api/users/me`   | GET    | Get current user | Yes           |
+
+### Request/Response Examples
+
+#### Register
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123",
+    "name": "John Doe"
+  }'
+```
+
+#### Login
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123"
+  }'
+```
+
+#### Access Protected Route
+```bash
+curl -X GET http://localhost:3000/api/users/me \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### Refresh Token
+```bash
+curl -X POST http://localhost:3000/api/auth/refresh-token \
+  -H "Content-Type: application/json" \
+  --cookie "refresh_token=YOUR_REFRESH_TOKEN"
+```
 
 ---
 

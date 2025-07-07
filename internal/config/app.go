@@ -29,10 +29,12 @@ type BootstrapConfig struct {
 func Bootstrap(app *BootstrapConfig) {
 	// setup repositories
 	userRepository := repository.NewUserRepository()
-	tokenBlacklistRepository := repository.NewRedisTokenBlacklist(app.Redis)
+	blacklistRepository := repository.NewRedisTokenBlacklist(app.Redis)
 
 	// setup use service
-	authService := service.NewAuthService(app.DB, userRepository, tokenBlacklistRepository, app.Config, app.Log)
+	jwtService := service.NewJwtService(app.Config, blacklistRepository)
+	blacklistService := service.NewBlacklistService(blacklistRepository, jwtService)
+	authService := service.NewAuthService(app.DB, jwtService, userRepository, blacklistService, app.Log)
 	redisService := service.NewRedisService(app.Redis, app.Log)
 	userService := service.NewUserService(app.DB, userRepository, redisService, app.Log)
 
@@ -40,16 +42,13 @@ func Bootstrap(app *BootstrapConfig) {
 	welcomeController := controller.NewWelcomeController()
 	authController := controller.NewAuthController(authService, app.Log, app.Validation)
 	userController := controller.NewUserController(userService, app.Log)
-	csrfController := controller.NewCsrfController(app.Log, app.Config)
 
 	// setup middleware
-	authMiddleware := middleware.AuthMiddleware(app.Config.JWT.Secret, app.Redis, app.Log, tokenBlacklistRepository)
-	// csrfMiddleware := middleware.CsrfMiddleware(app.Config.JWT.CsrfSecret, app.Log, tokenBlacklistRepository)
+	authMiddleware := middleware.AuthMiddleware(jwtService, blacklistService, app.Log)
 
 	// setup route
 	routeConfig := route.NewRouteConfig(app.App)
 	routeConfig.WelcomeRoutes(welcomeController)
 	routeConfig.RegisterAuthRoutes(authController)
-	routeConfig.RegisterCsrfRoute(csrfController, authMiddleware)
 	routeConfig.RegisterUserRoutes(userController, authMiddleware)
 }

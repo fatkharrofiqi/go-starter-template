@@ -3,7 +3,7 @@ package controller
 import (
 	"go-starter-template/internal/config/env"
 	"go-starter-template/internal/dto"
-	"go-starter-template/internal/utils/csrfutil"
+	"go-starter-template/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -12,16 +12,16 @@ import (
 )
 
 type CsrfController struct {
-	Logger *logrus.Logger
-	Tracer trace.Tracer
-	Config *env.Config
+	Logger      *logrus.Logger
+	Tracer      trace.Tracer
+	CsrfService *service.CsrfService
 }
 
-func NewCsrfController(logger *logrus.Logger, config *env.Config) *CsrfController {
+func NewCsrfController(logger *logrus.Logger, config *env.Config, csrfService *service.CsrfService) *CsrfController {
 	return &CsrfController{
-		Logger: logger,
-		Tracer: otel.Tracer("CsrfController"),
-		Config: config,
+		Logger:      logger,
+		Tracer:      otel.Tracer("CsrfController"),
+		CsrfService: csrfService,
 	}
 }
 
@@ -35,7 +35,7 @@ func (c *CsrfController) GenerateCsrfToken(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	csrfToken, err := csrfutil.GenerateCsrfToken(req.Path, c.Config.JWT.CsrfSecret)
+	csrfToken, err := c.CsrfService.GenerateCsrfToken(req.Path)
 	if err != nil {
 		return err
 	}

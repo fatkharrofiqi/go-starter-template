@@ -12,7 +12,10 @@ var (
 	ErrInvalidToken           = errors.New("invalid token")
 	ErrTokenInvalidation      = errors.New("failed to invalidate token")
 	ErrTokenBlacklisted       = errors.New("failed token is blacklist")
+	ErrUnauthorized           = errors.New("unauthorized")
 	ErrAuthorizationHeader    = errors.New("authorization header is required")
+	ErrBearerHeader           = errors.New("bearer is required")
+	ErrAccessTokenMissing     = errors.New("access token is required")
 	ErrTokenIsExpired         = errors.New("token is expired")
 
 	// Access Urls Errors
@@ -23,6 +26,7 @@ var (
 	// Redis Errors
 	ErrCantBlacklistToken = errors.New("can't blacklist the token")
 	ErrRedisSet           = errors.New("can't set to redis")
+	ErrRedisGet           = errors.New("can't read to redis")
 
 	// Tranform Errors
 	ErrMarshal = errors.New("failed to marshal")
@@ -58,6 +62,9 @@ var errorStatusMap = map[error]int{
 	ErrCsrfTokenInvalidPath:   fiber.StatusUnauthorized,
 	ErrCsrfTokenIsExpired:     fiber.StatusUnauthorized,
 	ErrTokenIsExpired:         fiber.StatusUnauthorized,
+	ErrAccessTokenMissing:     fiber.StatusUnauthorized,
+	ErrBearerHeader:           fiber.StatusUnauthorized,
+	ErrUnauthorized:           fiber.StatusUnauthorized,
 
 	// 409 Conflict Errors
 	ErrUserAlreadyExists: fiber.StatusConflict,
@@ -72,6 +79,7 @@ var errorStatusMap = map[error]int{
 	ErrCantBlacklistToken:     fiber.StatusInternalServerError,
 	ErrMarshal:                fiber.StatusInternalServerError,
 	ErrRedisSet:               fiber.StatusInternalServerError,
+	ErrRedisGet:               fiber.StatusInternalServerError,
 
 	// 404 Not Found Errors
 	ErrUserNotFound:     fiber.StatusNotFound,

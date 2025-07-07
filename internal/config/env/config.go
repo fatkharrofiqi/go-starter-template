@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
 	"gorm.io/gorm/logger"
@@ -19,9 +20,12 @@ type Config struct {
 		} `mapstructure:"cors"`
 	} `mapstructure:"web"`
 	JWT struct {
-		Secret        string `mapstructure:"secret"`
-		CsrfSecret    string `mapstructure:"csrf_secret"`
-		RefreshSecret string `mapstructure:"refresh_secret"`
+		Secret                 string        `mapstructure:"secret"`
+		CsrfSecret             string        `mapstructure:"csrf_secret"`
+		RefreshSecret          string        `mapstructure:"refresh_secret"`
+		CsrfTokenExpiration    time.Duration `mapstructure:"csrf_token_expiration"`
+		AccessTokenExpiration  time.Duration `mapstructure:"access_token_expiration"`
+		RefreshTokenExpiration time.Duration `mapstructure:"refresh_token_expiration"`
 	} `mapstructure:"jwt"`
 	Redis struct {
 		Address  string `mapstructure:"address"`

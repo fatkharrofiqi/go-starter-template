@@ -1,15 +1,14 @@
 package middleware
 
 import (
-	"go-starter-template/internal/repository"
+	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/apperrors"
-	"go-starter-template/internal/utils/csrfutil"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
-func CsrfMiddleware(secret string, log *logrus.Logger, blacklist repository.TokenBlacklistRepository) fiber.Handler {
+func CsrfMiddleware(csrfService *service.CsrfService, blacklistService *service.BlacklistService, log *logrus.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		csrfToken := c.Get("X-CSRF-Token")
 		if csrfToken == "" {
@@ -17,12 +16,12 @@ func CsrfMiddleware(secret string, log *logrus.Logger, blacklist repository.Toke
 			return apperrors.ErrCsrfTokenHeader
 		}
 
-		if _, err := blacklist.IsBlacklisted(csrfToken); err != nil {
+		if err := blacklistService.IsTokenBlacklisted(csrfToken); err != nil {
 			log.Error("csrf token is already used")
 			return apperrors.ErrTokenBlacklisted
 		}
 
-		claims, err := csrfutil.ValidateToken(csrfToken, secret)
+		claims, err := csrfService.ValidateCsrfToken(csrfToken)
 		if err != nil {
 			log.WithError(err).Error("invalid token")
 			return apperrors.ErrCsrfTokenIsExpired
@@ -33,7 +32,7 @@ func CsrfMiddleware(secret string, log *logrus.Logger, blacklist repository.Toke
 			return apperrors.ErrCsrfTokenInvalidPath
 		}
 
-		if err := blacklist.Add(csrfToken); err != nil {
+		if err := blacklistService.Add(csrfToken); err != nil {
 			log.WithError(err).Error("can't blacklist the csrf token")
 			return apperrors.ErrCantBlacklistToken
 		}
