@@ -40,7 +40,7 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) 
 	}
 
 	user := new(model.User)
-	if err := s.UserRepository.FindByUUID(s.DB.WithContext(userContext), user, uuid); err != nil {
+	if err := s.UserRepository.FindByUUID(userContext, user, uuid); err != nil {
 		s.Log.WithError(err).Warn("Failed to find user by UUID")
 		return "", apperrors.ErrUserNotFound
 	}
@@ -59,10 +59,10 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) 
 
 // Search retrieves users based on search criteria.
 func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]*dto.UserResponse, int64, error) {
-	serviceContext, span := s.Tracer.Start(ctx, "Search")
+	userContext, span := s.Tracer.Start(ctx, "Search")
 	defer span.End()
 
-	users, total, err := s.UserRepository.Search(s.DB.WithContext(serviceContext), request)
+	users, total, err := s.UserRepository.Search(userContext, request)
 	if err != nil {
 		s.Log.WithError(err).Error("Error retrieving users")
 		return nil, 0, apperrors.ErrUserSearchFailed

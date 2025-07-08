@@ -42,7 +42,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (string, 
 	defer span.End()
 
 	user := new(model.User)
-	err := s.UserRepository.FindByEmail(s.DB.WithContext(userContext), user, req.Email)
+	err := s.UserRepository.FindByEmail(userContext, user, req.Email)
 	if err != nil {
 		s.Logger.WithError(err).Error("User not found during login")
 		return "", "", apperrors.ErrInvalidEmailOrPassword
@@ -75,7 +75,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	userContext, span := s.Tracer.Start(ctx, "Register")
 	defer span.End()
 
-	tx := s.DB.WithContext(userContext).Begin()
+	tx := s.DB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -84,7 +84,8 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}()
 
 	// Check if user already exists
-	existingUserCount, err := s.UserRepository.CountByEmail(tx, req.Email)
+	userRepository := repository.NewUserRepository(tx)
+	existingUserCount, err := userRepository.CountByEmail(userContext, req.Email)
 	if err != nil {
 		s.Logger.WithError(err).Error("Database error checking existing user")
 		return nil, apperrors.ErrDatabaseError
@@ -109,7 +110,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		Name:     req.Name,
 	}
 
-	if err := s.UserRepository.Repository.Create(tx, &user); err != nil {
+	if err := userRepository.Create(userContext, &user); err != nil {
 		tx.Rollback()
 		s.Logger.WithError(err).Error("Error creating user")
 		return nil, apperrors.ErrUserCreationFailed

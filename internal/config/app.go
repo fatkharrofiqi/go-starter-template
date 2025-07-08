@@ -28,7 +28,7 @@ type BootstrapConfig struct {
 
 func Bootstrap(app *BootstrapConfig) {
 	// setup repositories
-	userRepository := repository.NewUserRepository()
+	userRepository := repository.NewUserRepository(app.DB)
 	blacklistRepository := repository.NewRedisTokenBlacklist(app.Redis)
 
 	// setup use service

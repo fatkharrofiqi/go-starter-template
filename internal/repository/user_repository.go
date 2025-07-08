@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/model"
 
@@ -11,38 +12,42 @@ type UserRepository struct {
 	Repository[model.User]
 }
 
-func NewUserRepository() *UserRepository {
-	return &UserRepository{}
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{
+		Repository[model.User]{
+			DB: db,
+		},
+	}
 }
 
-func (r *UserRepository) CountByEmail(tx *gorm.DB, email string) (int64, error) {
+func (r *UserRepository) CountByEmail(ctx context.Context, email string) (int64, error) {
 	var total int64
 	var user model.User
-	err := tx.Model(&user).Where("email = ?", email).Count(&total).Error
+	err := r.DB.WithContext(ctx).Model(&user).Where("email = ?", email).Count(&total).Error
 	return total, err
 }
 
-func (r *UserRepository) FindByEmail(tx *gorm.DB, user *model.User, email string) error {
-	return tx.Where("email = ?", email).First(&user).Error
+func (r *UserRepository) FindByEmail(ctx context.Context, user *model.User, email string) error {
+	return r.DB.WithContext(ctx).Where("email = ?", email).First(&user).Error
 }
 
-func (r *UserRepository) FindByUUID(tx *gorm.DB, user *model.User, uuid string) error {
-	return tx.Preload("Roles").
+func (r *UserRepository) FindByUUID(ctx context.Context, user *model.User, uuid string) error {
+	return r.DB.WithContext(ctx).Preload("Roles").
 		Preload("Permissions").
 		Preload("Roles.Permissions").
 		Where("uuid = ?", uuid).
 		First(&user).Error
 }
 
-func (r *UserRepository) Search(tx *gorm.DB, request *dto.SearchUserRequest) ([]*model.User, int64, error) {
+func (r *UserRepository) Search(ctx context.Context, request *dto.SearchUserRequest) ([]*model.User, int64, error) {
 	var user []*model.User
-	if err := tx.Scopes(r.FilterUser(request)).
+	if err := r.DB.WithContext(ctx).Scopes(r.FilterUser(request)).
 		Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
 		return nil, 0, err
 	}
 
 	var total int64 = 0
-	if err := tx.Model(&model.User{}).Scopes(r.FilterUser(request)).Count(&total).Error; err != nil {
+	if err := r.DB.WithContext(ctx).Model(&model.User{}).Scopes(r.FilterUser(request)).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
