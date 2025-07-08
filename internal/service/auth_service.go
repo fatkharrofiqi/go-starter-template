@@ -83,9 +83,11 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		}
 	}()
 
+	// Add transaction to context
+	txContext := context.WithValue(userContext, repository.TxKey, tx)
+
 	// Check if user already exists
-	userRepository := repository.NewUserRepository(tx)
-	existingUserCount, err := userRepository.CountByEmail(userContext, req.Email)
+	existingUserCount, err := s.UserRepository.CountByEmail(txContext, req.Email)
 	if err != nil {
 		s.Logger.WithError(err).Error("Database error checking existing user")
 		return nil, apperrors.ErrDatabaseError
@@ -110,7 +112,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		Name:     req.Name,
 	}
 
-	if err := userRepository.Create(userContext, &user); err != nil {
+	if err := s.UserRepository.Create(txContext, &user); err != nil {
 		tx.Rollback()
 		s.Logger.WithError(err).Error("Error creating user")
 		return nil, apperrors.ErrUserCreationFailed
