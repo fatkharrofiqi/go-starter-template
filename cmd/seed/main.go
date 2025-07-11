@@ -2,14 +2,15 @@ package main
 
 import (
 	"go-starter-template/db/seeder"
-	"go-starter-template/internal/config"
+	"go-starter-template/internal/config/database"
 	"go-starter-template/internal/config/env"
+	"go-starter-template/internal/config/logger"
 )
 
 func main() {
-	cfg := env.NewConfig()
-	log := config.NewLogger(cfg)
-	db := config.NewDatabase(cfg, log)
+	config := env.NewConfig()
+	log := logger.NewLogger(config)
+	db := database.NewDatabase(log, config)
 
 	seeder.Seed(db)
 }

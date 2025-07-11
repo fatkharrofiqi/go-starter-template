@@ -82,3 +82,27 @@ func NewConfig() *Config {
 
 	return config
 }
+
+func (c *Config) GetAccessSecret() string {
+	return c.JWT.Secret
+}
+
+func (c *Config) GetRefreshSecret() string {
+	return c.JWT.Secret
+}
+
+func (c *Config) GetCsrfSecret() string {
+	return c.JWT.CsrfSecret
+}
+
+func (c *Config) GetAccessTokenExpiration() time.Duration {
+	return c.JWT.AccessTokenExpiration * time.Second
+}
+
+func (c *Config) GetRefreshTokenExpiration() time.Duration {
+	return c.JWT.RefreshTokenExpiration * time.Second
+}
+
+func (c *Config) GetCsrfTokenExpiration() time.Duration {
+	return c.JWT.CsrfTokenExpiration * time.Second
+}

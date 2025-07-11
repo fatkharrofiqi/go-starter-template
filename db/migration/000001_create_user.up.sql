@@ -1,8 +1,8 @@
 CREATE TABLE users (
     uuid VARCHAR PRIMARY KEY NOT NULL UNIQUE,
-    name VARCHAR,
-    email VARCHAR UNIQUE,
-    password VARCHAR,
+    name VARCHAR NOT NULL,
+    email VARCHAR NOT NULL UNIQUE,
+    password VARCHAR NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
     deleted_at TIMESTAMP WITH TIME ZONE

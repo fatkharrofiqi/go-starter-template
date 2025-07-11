@@ -1,37 +1,26 @@
 package main
 
 import (
-	"fmt"
-	"go-starter-template/internal/config"
+	app "go-starter-template/internal"
+	"go-starter-template/internal/config/database"
 	"go-starter-template/internal/config/env"
-	"go-starter-template/internal/config/monitoring"
+	"go-starter-template/internal/config/logger"
+	"go-starter-template/internal/config/monitor"
+	"go-starter-template/internal/config/redis"
 	"go-starter-template/internal/config/validation"
+	"go-starter-template/internal/config/web"
 )
 
 func main() {
-	// Load the configuration
-	cfg := env.NewConfig()
-	log := config.NewLogger(cfg)
-	db := config.NewDatabase(cfg, log)
-	redis := config.NewRedis(cfg, log)
+	config := env.NewConfig()
+	log := logger.NewLogger(config)
+	web := web.NewFiber(log, config)
+	redis := redis.NewRedis(log, config)
+	db := database.NewDatabase(log, config)
+	monitoring := monitor.NewMonitoring(log, config)
 	validation := validation.NewValidation()
-	app := config.NewFiber(cfg, log)
-	trace := monitoring.NewMonitoring(log, cfg)
-	defer trace.Shutdown()
+	defer monitoring.Shutdown()
 
-	config.Bootstrap(&config.BootstrapConfig{
-		DB:         db,
-		App:        app,
-		Log:        log,
-		Config:     cfg,
-		Validation: validation,
-		Monitoring: trace,
-		Redis:      redis,
-	})
-
-	webPort := cfg.Web.Port
-	err := app.Listen(fmt.Sprintf(":%d", webPort))
-	if err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	server := app.NewApp(log, config, db, web, validation, redis)
+	server.Run()
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type WelcomeController struct {
-	Tracer trace.Tracer
+	tracer trace.Tracer
 }
 
 // NewWelcomeController creates a new instance of WelcomeController
@@ -18,7 +18,7 @@ func NewWelcomeController() *WelcomeController {
 }
 
 func (r *WelcomeController) Hello(ctx *fiber.Ctx) error {
-	_, span := r.Tracer.Start(ctx.UserContext(), "Hello")
+	_, span := r.tracer.Start(ctx.UserContext(), "Hello")
 	defer span.End()
 
 	return ctx.JSON(dto.WebResponse[interface{}]{

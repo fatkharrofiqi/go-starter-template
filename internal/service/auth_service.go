@@ -5,7 +5,7 @@ import (
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/model"
 	"go-starter-template/internal/repository"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
@@ -17,69 +17,62 @@ import (
 )
 
 type AuthService struct {
-	DB               *gorm.DB
-	JwtService       *JwtService
-	UserRepository   *repository.UserRepository
-	Logger           *logrus.Logger
-	BlacklistService *BlacklistService
-	Tracer           trace.Tracer
+	db               *gorm.DB
+	jwtService       *JwtService
+	userRepository   *repository.UserRepository
+	logger           *logrus.Logger
+	blacklistService *BlacklistService
+	tracer           trace.Tracer
 }
 
 func NewAuthService(db *gorm.DB, jwtService *JwtService, userRepo *repository.UserRepository, blacklistService *BlacklistService, logger *logrus.Logger) *AuthService {
-	return &AuthService{
-		DB:               db,
-		JwtService:       jwtService,
-		UserRepository:   userRepo,
-		Logger:           logger,
-		BlacklistService: blacklistService,
-		Tracer:           otel.Tracer("AuthService"),
-	}
+	return &AuthService{db, jwtService, userRepo, logger, blacklistService, otel.Tracer("AuthService")}
 }
 
 // Login authenticates a user and returns JWT tokens.
-func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (string, string, error) {
-	userContext, span := s.Tracer.Start(ctx, "Login")
+func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (string, string, error) {
+	userContext, span := s.tracer.Start(ctx, "Login")
 	defer span.End()
 
 	user := new(model.User)
-	err := s.UserRepository.FindByEmail(userContext, user, req.Email)
+	err := s.userRepository.FindByEmail(userContext, user, req.Email)
 	if err != nil {
-		s.Logger.WithError(err).Error("User not found during login")
-		return "", "", apperrors.ErrInvalidEmailOrPassword
+		s.logger.WithError(err).Error("User not found during login")
+		return "", "", errcode.ErrInvalidEmailOrPassword
 	}
 
 	// Validate password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		s.Logger.WithError(err).Error("Invalid password attempt")
-		return "", "", apperrors.ErrInvalidEmailOrPassword
+		s.logger.WithError(err).Error("Invalid password attempt")
+		return "", "", errcode.ErrInvalidEmailOrPassword
 	}
 
 	// Generate JWT tokens
-	accessToken, err := s.JwtService.GenerateAccessToken(user.UUID)
+	accessToken, err := s.jwtService.GenerateAccessToken(user.UUID)
 	if err != nil {
-		s.Logger.WithError(err).Error("Error generating access token")
-		return "", "", apperrors.ErrAccessTokenGeneration
+		s.logger.WithError(err).Error("Error generating access token")
+		return "", "", errcode.ErrAccessTokenGeneration
 	}
 
-	refreshToken, err := s.JwtService.GenerateRefreshToken(user.UUID)
+	refreshToken, err := s.jwtService.GenerateRefreshToken(user.UUID)
 	if err != nil {
-		s.Logger.WithError(err).Error("Error generating refresh token")
-		return "", "", apperrors.ErrRefreshTokenGeneration
+		s.logger.WithError(err).Error("Error generating refresh token")
+		return "", "", errcode.ErrRefreshTokenGeneration
 	}
 
 	return accessToken, refreshToken, nil
 }
 
 // Register creates a new user with a hashed password.
-func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*dto.UserResponse, error) {
-	userContext, span := s.Tracer.Start(ctx, "Register")
+func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.UserResponse, error) {
+	userContext, span := s.tracer.Start(ctx, "Register")
 	defer span.End()
 
-	tx := s.DB.Begin()
+	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
-			s.Logger.Error("Transaction panic recovered")
+			s.logger.Error("Transaction panic recovered")
 		}
 	}()
 
@@ -87,22 +80,22 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	txContext := context.WithValue(userContext, repository.TxKey, tx)
 
 	// Check if user already exists
-	existingUserCount, err := s.UserRepository.CountByEmail(txContext, req.Email)
+	existingUserCount, err := s.userRepository.CountByEmail(txContext, req.Email)
 	if err != nil {
-		s.Logger.WithError(err).Error("Database error checking existing user")
-		return nil, apperrors.ErrDatabaseError
+		s.logger.WithError(err).Error("Database error checking existing user")
+		return nil, errcode.ErrDatabaseError
 	}
 
 	if existingUserCount > 0 {
-		s.Logger.Warn("Attempt to register an already existing email")
-		return nil, apperrors.ErrUserAlreadyExists
+		s.logger.Warn("Attempt to register an already existing email")
+		return nil, errcode.ErrUserAlreadyExists
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		s.Logger.WithError(err).Error("Failed to hash password")
-		return nil, apperrors.ErrPasswordEncryption
+		s.logger.WithError(err).Error("Failed to hash password")
+		return nil, errcode.ErrPasswordEncryption
 	}
 
 	user := model.User{
@@ -112,15 +105,15 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		Name:     req.Name,
 	}
 
-	if err := s.UserRepository.Create(txContext, &user); err != nil {
+	if err := s.userRepository.Create(txContext, &user); err != nil {
 		tx.Rollback()
-		s.Logger.WithError(err).Error("Error creating user")
-		return nil, apperrors.ErrUserCreationFailed
+		s.logger.WithError(err).Error("Error creating user")
+		return nil, errcode.ErrUserCreationFailed
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		s.Logger.WithError(err).Error("Transaction commit failed")
-		return nil, apperrors.ErrDatabaseTransaction
+		s.logger.WithError(err).Error("Transaction commit failed")
+		return nil, errcode.ErrDatabaseTransaction
 	}
 
 	return &dto.UserResponse{
@@ -134,38 +127,38 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 
 // RefreshToken generates a new access token using a valid refresh token.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
-	_, span := s.Tracer.Start(ctx, "RefreshToken")
+	_, span := s.tracer.Start(ctx, "RefreshToken")
 	defer span.End()
 
-	err := s.BlacklistService.IsTokenBlacklisted(refreshToken)
+	err := s.blacklistService.IsTokenBlacklisted(refreshToken)
 	if err != nil {
 		log.Warn("already logout")
-		return "", "", apperrors.ErrUnauthorized
+		return "", "", errcode.ErrUnauthorized
 	}
 
-	claims, err := s.JwtService.ValidateRefreshToken(refreshToken)
+	claims, err := s.jwtService.ValidateRefreshToken(refreshToken)
 	if err != nil {
-		s.Logger.WithError(err).Error("Invalid refresh token")
-		return "", "", apperrors.ErrInvalidToken
+		s.logger.WithError(err).Error("Invalid refresh token")
+		return "", "", errcode.ErrInvalidToken
 	}
 
 	// Generate new access token
-	accessToken, err := s.JwtService.GenerateAccessToken(claims.UUID)
+	accessToken, err := s.jwtService.GenerateAccessToken(claims.UUID)
 	if err != nil {
-		s.Logger.WithError(err).Error("Error generating new access token")
-		return "", "", apperrors.ErrAccessTokenGeneration
+		s.logger.WithError(err).Error("Error generating new access token")
+		return "", "", errcode.ErrAccessTokenGeneration
 	}
 
 	// ROTATION: Generate new refresh token
-	newRefreshToken, err := s.JwtService.GenerateRefreshToken(claims.UUID)
+	newRefreshToken, err := s.jwtService.GenerateRefreshToken(claims.UUID)
 	if err != nil {
-		s.Logger.WithError(err).Error("Error generating new refresh token")
-		return "", "", apperrors.ErrRefreshTokenGeneration
+		s.logger.WithError(err).Error("Error generating new refresh token")
+		return "", "", errcode.ErrRefreshTokenGeneration
 	}
 
 	// ROTATION: Blacklist old refresh token
-	if err := s.BlacklistService.Add(refreshToken); err != nil {
-		s.Logger.WithError(err).Error("Failed to blacklist old refresh token")
+	if err := s.blacklistService.Add(refreshToken); err != nil {
+		s.logger.WithError(err).Error("Failed to blacklist old refresh token")
 		return "", "", err
 	}
 
@@ -173,17 +166,17 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (st
 }
 
 func (s *AuthService) Logout(ctx context.Context, accessToken, refreshToken string) error {
-	_, span := s.Tracer.Start(ctx, "Logout")
+	_, span := s.tracer.Start(ctx, "Logout")
 	defer span.End()
 
 	// Add the token to a blacklist or revocation list.
-	if err := s.BlacklistService.Add(accessToken); err != nil {
-		s.Logger.WithError(err).Error("Failed to invalidate access token to redis")
+	if err := s.blacklistService.Add(accessToken); err != nil {
+		s.logger.WithError(err).Error("Failed to invalidate access token to redis")
 		return err
 	}
 
-	if err := s.BlacklistService.Add(refreshToken); err != nil {
-		s.Logger.WithError(err).Error("Failed to invalidate refresh token to redis")
+	if err := s.blacklistService.Add(refreshToken); err != nil {
+		s.logger.WithError(err).Error("Failed to invalidate refresh token to redis")
 		return err
 	}
 

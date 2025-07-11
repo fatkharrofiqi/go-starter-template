@@ -11,7 +11,7 @@ type contextKey string
 var TxKey contextKey = "tx"
 
 type Repository[T any] struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 func (r *Repository[T]) Create(ctx context.Context, entity *T) error {
@@ -40,5 +40,5 @@ func (r *Repository[T]) getDb(ctx context.Context) *gorm.DB {
 	if tx, ok := ctx.Value(TxKey).(*gorm.DB); ok && tx != nil {
 		return tx.WithContext(ctx)
 	}
-	return r.DB.WithContext(ctx)
+	return r.db.WithContext(ctx)
 }

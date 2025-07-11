@@ -4,7 +4,7 @@ import (
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/service"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 	"math"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,9 +14,9 @@ import (
 )
 
 type UserController struct {
-	UserService *service.UserService
-	Logger      *logrus.Logger
-	Tracer      trace.Tracer
+	userService *service.UserService
+	logger      *logrus.Logger
+	tracer      trace.Tracer
 }
 
 func NewUserController(userService *service.UserService, logger *logrus.Logger) *UserController {
@@ -24,14 +24,14 @@ func NewUserController(userService *service.UserService, logger *logrus.Logger) 
 }
 
 func (c *UserController) Me(ctx *fiber.Ctx) error {
-	userContext, span := c.Tracer.Start(ctx.UserContext(), "Me")
+	userContext, span := c.tracer.Start(ctx.UserContext(), "Me")
 	defer span.End()
 
 	auth := middleware.GetUser(ctx)
 
-	user, err := c.UserService.GetUser(userContext, auth.UUID)
+	user, err := c.userService.GetUser(userContext, auth.UUID)
 	if err != nil {
-		c.Logger.WithError(err).Error("user not found")
+		c.logger.WithError(err).Error("user not found")
 		return err
 	}
 
@@ -39,19 +39,19 @@ func (c *UserController) Me(ctx *fiber.Ctx) error {
 }
 
 func (c *UserController) List(ctx *fiber.Ctx) error {
-	userContext, span := c.Tracer.Start(ctx.UserContext(), "List")
+	userContext, span := c.tracer.Start(ctx.UserContext(), "List")
 	defer span.End()
 
 	req := new(dto.SearchUserRequest)
 	if err := ctx.QueryParser(req); err != nil {
-		c.Logger.WithError(err).Error("failed to parse request query")
-		return apperrors.ErrBadRequest
+		c.logger.WithError(err).Error("failed to parse request query")
+		return errcode.ErrBadRequest
 	}
 	req.SetDefault()
 
-	users, total, err := c.UserService.Search(userContext, req)
+	users, total, err := c.userService.Search(userContext, req)
 	if err != nil {
-		c.Logger.WithError(err).Error("error searching user")
+		c.logger.WithError(err).Error("error searching user")
 		return err
 	}
 

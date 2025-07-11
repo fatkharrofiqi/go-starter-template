@@ -12,30 +12,26 @@ import (
 )
 
 type CsrfController struct {
-	Logger      *logrus.Logger
-	Tracer      trace.Tracer
-	CsrfService *service.CsrfService
+	logger      *logrus.Logger
+	csrfService *service.CsrfService
+	tracer      trace.Tracer
 }
 
 func NewCsrfController(logger *logrus.Logger, config *env.Config, csrfService *service.CsrfService) *CsrfController {
-	return &CsrfController{
-		Logger:      logger,
-		Tracer:      otel.Tracer("CsrfController"),
-		CsrfService: csrfService,
-	}
+	return &CsrfController{logger, csrfService, otel.Tracer("CsrfController")}
 }
 
 func (c *CsrfController) GenerateCsrfToken(ctx *fiber.Ctx) error {
-	_, span := c.Tracer.Start(ctx.UserContext(), "GenerateCsrfToken")
+	_, span := c.tracer.Start(ctx.UserContext(), "GenerateCsrfToken")
 	defer span.End()
 
 	var req dto.CsrfRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		c.Logger.WithError(err).Error("Failed to parse csrf token request")
+		c.logger.WithError(err).Error("Failed to parse csrf token request")
 		return fiber.ErrBadRequest
 	}
 
-	csrfToken, err := c.CsrfService.GenerateCsrfToken(req.Path)
+	csrfToken, err := c.csrfService.GenerateCsrfToken(req.Path)
 	if err != nil {
 		return err
 	}

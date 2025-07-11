@@ -3,8 +3,7 @@ package service
 import (
 	"errors"
 	"go-starter-template/internal/config/env"
-	"go-starter-template/internal/repository"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,21 +16,11 @@ type Claims struct {
 }
 
 type JwtService struct {
-	AccessTokenExpiration    time.Duration
-	RefreshTokenExpiration   time.Duration
-	TokenBlacklistRepository repository.TokenBlacklistRepository
-	accessTokenSecret        string
-	refreshTokenSecret       string
+	config *env.Config
 }
 
-func NewJwtService(config *env.Config, tokenBlacklistRepository repository.TokenBlacklistRepository) *JwtService {
-	return &JwtService{
-		AccessTokenExpiration:    config.JWT.AccessTokenExpiration * time.Second,
-		RefreshTokenExpiration:   config.JWT.RefreshTokenExpiration * time.Second,
-		TokenBlacklistRepository: tokenBlacklistRepository,
-		accessTokenSecret:        config.JWT.Secret,
-		refreshTokenSecret:       config.JWT.RefreshSecret,
-	}
+func NewJwtService(config *env.Config) *JwtService {
+	return &JwtService{config}
 }
 
 // GenerateAccessToken creates a short-lived JWT access token
@@ -40,13 +29,13 @@ func (j *JwtService) GenerateAccessToken(uuid string) (string, error) {
 		UUID: uuid,
 		Type: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.AccessTokenExpiration)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.config.GetAccessTokenExpiration())),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(j.accessTokenSecret))
+	return token.SignedString([]byte(j.config.GetAccessSecret()))
 }
 
 // GenerateRefreshToken creates a long-lived JWT refresh token
@@ -55,21 +44,21 @@ func (j *JwtService) GenerateRefreshToken(uuid string) (string, error) {
 		UUID: uuid,
 		Type: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.RefreshTokenExpiration)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.config.GetRefreshTokenExpiration())),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(j.refreshTokenSecret))
+	return token.SignedString([]byte(j.config.GetRefreshSecret()))
 }
 
 func (j *JwtService) ValidateAccessToken(token string) (*Claims, error) {
-	return j.validateToken(token, j.accessTokenSecret)
+	return j.validateToken(token, j.config.GetAccessSecret())
 }
 
 func (j *JwtService) ValidateRefreshToken(token string) (*Claims, error) {
-	return j.validateToken(token, j.refreshTokenSecret)
+	return j.validateToken(token, j.config.GetRefreshSecret())
 }
 
 // ValidateToken verifies a JWT token and returns the claims if valid
@@ -88,7 +77,7 @@ func (j *JwtService) validateToken(tokenString string, secretKey string) (*Claim
 	}
 
 	if !token.Valid {
-		return nil, apperrors.ErrInvalidToken
+		return nil, errcode.ErrInvalidToken
 	}
 
 	return claims, nil

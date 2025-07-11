@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go-starter-template/internal/config"
+	"go-starter-template/internal/config/database"
 	"go-starter-template/internal/config/env"
 
 	"github.com/sirupsen/logrus"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewDatabase(t *testing.T) {
-	cfg := env.NewConfig()
+	config := env.NewConfig()
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 	logger.SetFormatter(&logrus.TextFormatter{
@@ -22,7 +22,7 @@ func TestNewDatabase(t *testing.T) {
 		FullTimestamp:   true,
 	})
 
-	db := config.NewDatabase(cfg, logger)
+	db := database.NewDatabase(logger, config)
 	assert.NotNil(t, db, "Database instance should not be nil")
 
 	sqlDB, err := db.DB()

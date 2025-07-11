@@ -122,7 +122,7 @@ This application implements a secure JWT-based authentication system with cookie
  ┃ ┣ 📂 service       # Business logic
  ┃ ┃ ┗ 📜 auth_service.go
  ┃ ┣ 📂 utils         # Utility packages
- ┃ ┃ ┗ 📂 apperrors
+ ┃ ┃ ┗ 📂 errcode
  ┣ 📂 test            # Testing
  ┃ ┣ 📂 performance   # K6 performance tests
  ┃ ┃ ┣ 📜 get-user.js

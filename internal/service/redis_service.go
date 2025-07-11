@@ -12,25 +12,21 @@ import (
 )
 
 type RedisService struct {
-	Client *redis.Client
-	Logger *logrus.Logger
-	Tracer trace.Tracer
+	client *redis.Client
+	logger *logrus.Logger
+	tracer trace.Tracer
 }
 
 func NewRedisService(client *redis.Client, logger *logrus.Logger) *RedisService {
-	return &RedisService{
-		Client: client,
-		Logger: logger,
-		Tracer: otel.Tracer("RedisService"),
-	}
+	return &RedisService{client, logger, otel.Tracer("RedisService")}
 }
 
 // Get retrieves a string JSON value from Redis result.
 func (r *RedisService) Get(ctx context.Context, key string) (string, bool) {
-	userContext, span := r.Tracer.Start(ctx, "Get")
+	userContext, span := r.tracer.Start(ctx, "Get")
 	defer span.End()
 
-	cached, err := r.Client.Get(userContext, key).Result()
+	cached, err := r.client.Get(userContext, key).Result()
 	if err == redis.Nil {
 		// Cache miss
 		return "", false
@@ -38,26 +34,26 @@ func (r *RedisService) Get(ctx context.Context, key string) (string, bool) {
 
 	if err != nil {
 		// Redis error
-		r.Logger.WithError(err).Error("redis get error")
+		r.logger.WithError(err).Error("redis get error")
 		return "", false
 	}
 
-	r.Logger.WithField("key", key).Info("redis cache hit")
+	r.logger.WithField("key", key).Info("redis cache hit")
 	return cached, true
 }
 
 // Set marshals value to JSON and stores it in Redis with TTL.
 func (r *RedisService) Set(ctx context.Context, key string, data interface{}, ttl time.Duration) (string, error) {
-	userContext, span := r.Tracer.Start(ctx, "Set")
+	userContext, span := r.tracer.Start(ctx, "Set")
 	defer span.End()
 
 	json, err := json.Marshal(data)
 	if err != nil {
-		r.Logger.WithError(err).Warn("failed to marshal user response")
+		r.logger.WithError(err).Warn("failed to marshal user response")
 		return "", err
 	}
-	if err := r.Client.Set(userContext, key, json, ttl).Err(); err != nil {
-		r.Logger.WithError(err).Error("failed to store data to redis")
+	if err := r.client.Set(userContext, key, json, ttl).Err(); err != nil {
+		r.logger.WithError(err).Error("failed to store data to redis")
 		return "", err
 	}
 

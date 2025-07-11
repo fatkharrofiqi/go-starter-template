@@ -1,17 +1,13 @@
 package test
 
 import (
-	"go-starter-template/internal/config"
 	"go-starter-template/internal/config/env"
-	"go-starter-template/internal/repository"
 	"go-starter-template/internal/service"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
-
-const secretKey = "test_secret"
 
 func setupConfig() *env.Config {
 	return env.NewConfig()
@@ -25,10 +21,7 @@ func setupConfigError() *env.Config {
 }
 
 func setupService(cfg *env.Config) *service.JwtService {
-	log := config.NewLogger(cfg)
-	redis := config.NewRedis(cfg, log)
-	repo := repository.NewRedisTokenBlacklist(redis)
-	service := service.NewJwtService(cfg, repo)
+	service := service.NewJwtService(cfg)
 	return service
 }
 

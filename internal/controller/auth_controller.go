@@ -1,10 +1,11 @@
 package controller
 
 import (
+	"go-starter-template/internal/config/env"
 	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/dto"
 	"go-starter-template/internal/service"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 	"strings"
 	"time"
 
@@ -15,34 +16,30 @@ import (
 )
 
 type AuthController struct {
-	AuthService *service.AuthService
-	Logger      *logrus.Logger
-	Validation  *validation.Validation
-	Tracer      trace.Tracer
+	authService *service.AuthService
+	logger      *logrus.Logger
+	validation  *validation.Validation
+	config      *env.Config
+	tracer      trace.Tracer
 }
 
-func NewAuthController(authService *service.AuthService, logger *logrus.Logger, validator *validation.Validation) *AuthController {
-	return &AuthController{authService, logger, validator, otel.Tracer("AuthController")}
+func NewAuthController(authService *service.AuthService, logger *logrus.Logger, validator *validation.Validation, config *env.Config) *AuthController {
+	return &AuthController{authService, logger, validator, config, otel.Tracer("AuthController")}
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	userContext, span := c.Tracer.Start(ctx.UserContext(), "Login")
+	userContext, span := c.tracer.Start(ctx.UserContext(), "Login")
 	defer span.End()
 
-	var req dto.LoginRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		c.Logger.WithError(err).Error("Failed to parse login request")
-		return apperrors.ErrBadRequest
-	}
-
-	if err := c.Validation.Validate(req); err != nil {
-		c.Logger.WithError(err).Warn("Validation failed for login request")
+	req := new(dto.LoginRequest)
+	if err := c.validation.ParseAndValidate(ctx, req); err != nil {
+		c.logger.WithError(err).Error("Failed to parse and validate login request")
 		return err
 	}
 
-	accessToken, refreshToken, err := c.AuthService.Login(userContext, req)
+	accessToken, refreshToken, err := c.authService.Login(userContext, req)
 	if err != nil {
-		c.Logger.WithError(err).Warn("Invalid login attempt")
+		c.logger.WithError(err).Warn("Invalid login attempt")
 		return err
 	}
 
@@ -54,23 +51,18 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	userContext, span := c.Tracer.Start(ctx.UserContext(), "Register")
+	userContext, span := c.tracer.Start(ctx.UserContext(), "Register")
 	defer span.End()
 
-	var req dto.RegisterRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		c.Logger.WithError(err).Error("Failed to parse registration request")
-		return apperrors.ErrBadRequest
-	}
-
-	if err := c.Validation.Validate(req); err != nil {
-		c.Logger.WithError(err).Warn("Validation failed for registration request")
+	req := new(dto.RegisterRequest)
+	if err := c.validation.ParseAndValidate(ctx, req); err != nil {
+		c.logger.WithError(err).Error("Failed to parse and validate register request")
 		return err
 	}
 
-	user, err := c.AuthService.Register(userContext, req)
+	user, err := c.authService.Register(userContext, req)
 	if err != nil {
-		c.Logger.WithError(err).Warn("User registration failed")
+		c.logger.WithError(err).Warn("User registration failed")
 		return err
 	}
 
@@ -78,19 +70,19 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
-	userContext, span := c.Tracer.Start(ctx.UserContext(), "RefreshToken")
+	userContext, span := c.tracer.Start(ctx.UserContext(), "RefreshToken")
 	defer span.End()
 
 	refreshToken := ctx.Cookies("refresh_token")
 	if refreshToken == "" {
-		c.Logger.Warn("Refresh token not found in cookies")
-		return apperrors.ErrUnauthorized
+		c.logger.Warn("Refresh token not found in cookies")
+		return errcode.ErrUnauthorized
 	}
 
 	// Receive both access and refresh token
-	accessToken, newRefreshToken, err := c.AuthService.RefreshToken(userContext, refreshToken)
+	accessToken, newRefreshToken, err := c.authService.RefreshToken(userContext, refreshToken)
 	if err != nil {
-		c.Logger.WithError(err).Warn("Invalid refresh token attempt")
+		c.logger.WithError(err).Warn("Invalid refresh token attempt")
 		c.clearRefreshTokenCookie(ctx)
 		return err
 	}
@@ -104,35 +96,35 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Logout(ctx *fiber.Ctx) error {
-	userContext, span := c.Tracer.Start(ctx.UserContext(), "Logout")
+	userContext, span := c.tracer.Start(ctx.UserContext(), "Logout")
 	defer span.End()
 
 	authHeader := ctx.Get("Authorization")
 	if authHeader == "" {
-		c.Logger.Warn("Authorization header not found")
-		return apperrors.ErrUnauthorized
+		c.logger.Warn("Authorization header not found")
+		return errcode.ErrUnauthorized
 	}
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		c.Logger.Warn("Bearer not found in Authorization header")
-		return apperrors.ErrUnauthorized
+		c.logger.Warn("Bearer not found in Authorization header")
+		return errcode.ErrUnauthorized
 	}
 
 	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 	if accessToken == "" {
-		c.Logger.Warn("Access token not found in Authorization header")
-		return apperrors.ErrUnauthorized
+		c.logger.Warn("Access token not found in Authorization header")
+		return errcode.ErrUnauthorized
 	}
 
 	refreshToken := ctx.Cookies("refresh_token")
 	if refreshToken == "" {
-		c.Logger.Warn("Refresh token not found in cookies")
-		return apperrors.ErrUnauthorized
+		c.logger.Warn("Refresh token not found in cookies")
+		return errcode.ErrUnauthorized
 	}
 
-	err := c.AuthService.Logout(userContext, accessToken, refreshToken)
+	err := c.authService.Logout(userContext, accessToken, refreshToken)
 	if err != nil {
-		c.Logger.WithError(err).Error("Failed to logout")
+		c.logger.WithError(err).Error("Failed to logout")
 		return err
 	}
 
@@ -146,7 +138,7 @@ func (c *AuthController) setRefreshTokenCookie(ctx *fiber.Ctx, refreshToken stri
 	ctx.Cookie(&fiber.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
-		Expires:  time.Now().Add(c.AuthService.JwtService.RefreshTokenExpiration),
+		Expires:  time.Now().Add(c.config.GetRefreshTokenExpiration()),
 		HTTPOnly: true,     // Prevent XSS attacks
 		Secure:   true,     // Only send over HTTPS
 		SameSite: "Strict", // Prevent CSRF attacks

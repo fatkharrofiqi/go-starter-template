@@ -4,28 +4,28 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"go-starter-template/internal/repository"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 	"time"
 )
 
 type BlacklistService struct {
-	BlacklistRepository repository.TokenBlacklistRepository
 	JwtService          *JwtService
+	BlacklistRepository repository.TokenBlacklistRepository
 }
 
-func NewBlacklistService(repo repository.TokenBlacklistRepository, jwtService *JwtService) *BlacklistService {
-	return &BlacklistService{repo, jwtService}
+func NewBlacklistService(jwtService *JwtService, repo repository.TokenBlacklistRepository) *BlacklistService {
+	return &BlacklistService{jwtService, repo}
 }
 
 func (b *BlacklistService) IsTokenBlacklisted(token string) error {
 	tokenHash := b.generateTokenHash(token)
 	logout, err := b.BlacklistRepository.IsBlacklisted(tokenHash)
 	if err != nil {
-		return apperrors.ErrRedisGet
+		return errcode.ErrRedisGet
 	}
 
 	if logout {
-		return apperrors.ErrUnauthorized
+		return errcode.ErrUnauthorized
 	}
 
 	return nil
@@ -50,7 +50,7 @@ func (b *BlacklistService) Add(token string) error {
 	}
 
 	if err := b.BlacklistRepository.Add(tokenHash, ttl); err != nil {
-		return apperrors.ErrRedisSet
+		return errcode.ErrRedisSet
 	}
 
 	return nil

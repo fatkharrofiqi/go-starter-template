@@ -31,33 +31,33 @@ func Seed(db *gorm.DB) {
 	}
 
 	roles := []model.Role{
-		{UUID: uuid.NewString(), Name: "Admin"},
-		{UUID: uuid.NewString(), Name: "User"},
+		{UUID: uuid.NewString(), Name: "admin"},
+		{UUID: uuid.NewString(), Name: "user"},
 	}
 
 	crudUser := []model.Permission{
-		{UUID: uuid.NewString(), Name: "Read User"},
-		{UUID: uuid.NewString(), Name: "Write User"},
-		{UUID: uuid.NewString(), Name: "Delete User"},
-		{UUID: uuid.NewString(), Name: "Update User"},
+		{UUID: uuid.NewString(), Name: "read-user"},
+		{UUID: uuid.NewString(), Name: "write-user"},
+		{UUID: uuid.NewString(), Name: "delete-user"},
+		{UUID: uuid.NewString(), Name: "update-user"},
 	}
 
 	crudPermissions := []model.Permission{
-		{UUID: uuid.NewString(), Name: "Read Permission"},
-		{UUID: uuid.NewString(), Name: "Write Permission"},
-		{UUID: uuid.NewString(), Name: "Delete Permission"},
-		{UUID: uuid.NewString(), Name: "Update Permission"},
+		{UUID: uuid.NewString(), Name: "read-permission"},
+		{UUID: uuid.NewString(), Name: "write-permission"},
+		{UUID: uuid.NewString(), Name: "delete-permission"},
+		{UUID: uuid.NewString(), Name: "update-permission"},
 	}
 
 	crudRole := []model.Permission{
-		{UUID: uuid.NewString(), Name: "Read Role"},
-		{UUID: uuid.NewString(), Name: "Write Role"},
-		{UUID: uuid.NewString(), Name: "Delete Role"},
-		{UUID: uuid.NewString(), Name: "Update Role"},
+		{UUID: uuid.NewString(), Name: "read-role"},
+		{UUID: uuid.NewString(), Name: "write-role"},
+		{UUID: uuid.NewString(), Name: "delete-role"},
+		{UUID: uuid.NewString(), Name: "update-role"},
 	}
 
 	otherPermission := model.Permission{
-		UUID: uuid.NewString(), Name: "Read Other",
+		UUID: uuid.NewString(), Name: "read-other",
 	}
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)

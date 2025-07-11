@@ -9,7 +9,7 @@ export const options = {
 		{ duration: "10s", target: 0 }, // Ramp down to 0 VUs in 10s
 	],
 	thresholds: {
-		http_req_duration: ["p(99)<200"], // 99% of requests must be below 200ms
+		http_req_duration: ["p(99.99)<200"], // 99.99% of requests must be below 200ms
 	},
 };
 

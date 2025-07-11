@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"go-starter-template/internal/service"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,18 +14,18 @@ func AuthMiddleware(jwtService *service.JwtService, blacklistService *service.Bl
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			log.Error("authorization header required")
-			return apperrors.ErrAuthorizationHeader
+			return errcode.ErrAuthorizationHeader
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Warn("bearer not found in Authorization header")
-			return apperrors.ErrBearerHeader
+			return errcode.ErrBearerHeader
 		}
 
 		accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 		if accessToken == "" {
 			log.Warn("access token not found in Authorization header")
-			return apperrors.ErrAccessTokenMissing
+			return errcode.ErrAccessTokenMissing
 		}
 
 		if err := blacklistService.IsTokenBlacklisted(accessToken); err != nil {
@@ -36,7 +36,7 @@ func AuthMiddleware(jwtService *service.JwtService, blacklistService *service.Bl
 		claims, err := jwtService.ValidateAccessToken(accessToken)
 		if err != nil {
 			log.WithError(err).Error("token is expired")
-			return apperrors.ErrTokenIsExpired
+			return errcode.ErrTokenIsExpired
 		}
 
 		c.Locals("auth", claims)

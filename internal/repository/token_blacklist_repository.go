@@ -43,10 +43,7 @@ type RedisTokenBlacklist struct {
 }
 
 func NewRedisTokenBlacklist(client *redis.Client) *RedisTokenBlacklist {
-	return &RedisTokenBlacklist{
-		client: client,
-		ctx:    context.Background(),
-	}
+	return &RedisTokenBlacklist{client, context.Background()}
 }
 
 func (r *RedisTokenBlacklist) Add(token string, duration time.Duration) error {

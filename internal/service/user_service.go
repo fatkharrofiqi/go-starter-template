@@ -7,7 +7,7 @@ import (
 	"go-starter-template/internal/dto/converter"
 	"go-starter-template/internal/model"
 	"go-starter-template/internal/repository"
-	"go-starter-template/internal/utils/apperrors"
+	"go-starter-template/internal/utils/errcode"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -17,11 +17,11 @@ import (
 )
 
 type UserService struct {
-	DB             *gorm.DB
-	UserRepository *repository.UserRepository
-	RedisService   *RedisService
-	Log            *logrus.Logger
-	Tracer         trace.Tracer
+	db             *gorm.DB
+	userRepository *repository.UserRepository
+	redisService   *RedisService
+	log            *logrus.Logger
+	tracer         trace.Tracer
 }
 
 func NewUserService(db *gorm.DB, userRepository *repository.UserRepository, redisService *RedisService, logrus *logrus.Logger) *UserService {
@@ -30,28 +30,28 @@ func NewUserService(db *gorm.DB, userRepository *repository.UserRepository, redi
 
 // GetUser retrieves a user by UUID.
 func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) {
-	userContext, span := s.Tracer.Start(ctx, "GetUser")
+	userContext, span := s.tracer.Start(ctx, "GetUser")
 	defer span.End()
 
 	cacheKey := fmt.Sprintf("user:me:%s", uuid)
-	if cachedResponse, found := s.RedisService.Get(userContext, cacheKey); found {
-		s.Log.Info("user profile retrieved from Redis cache")
+	if cachedResponse, found := s.redisService.Get(userContext, cacheKey); found {
+		s.log.Info("user profile retrieved from Redis cache")
 		return cachedResponse, nil
 	}
 
 	user := new(model.User)
-	if err := s.UserRepository.FindByUUID(userContext, user, uuid); err != nil {
-		s.Log.WithError(err).Warn("Failed to find user by UUID")
-		return "", apperrors.ErrUserNotFound
+	if err := s.userRepository.FindByUUID(userContext, user, uuid); err != nil {
+		s.log.WithError(err).Warn("Failed to find user by UUID")
+		return "", errcode.ErrUserNotFound
 	}
 
-	result, err := s.RedisService.Set(userContext, cacheKey, dto.WebResponse[*dto.UserResponse]{
+	result, err := s.redisService.Set(userContext, cacheKey, dto.WebResponse[*dto.UserResponse]{
 		Data: converter.UserToResponse(user),
 	}, 5*time.Minute)
 
 	if err != nil {
-		s.Log.WithError(err).Warn("failed to save user response to redis")
-		return "", apperrors.ErrRedisSet
+		s.log.WithError(err).Warn("failed to save user response to redis")
+		return "", errcode.ErrRedisSet
 	}
 
 	return result, nil
@@ -59,13 +59,13 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) 
 
 // Search retrieves users based on search criteria.
 func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]*dto.UserResponse, int64, error) {
-	userContext, span := s.Tracer.Start(ctx, "Search")
+	userContext, span := s.tracer.Start(ctx, "Search")
 	defer span.End()
 
-	users, total, err := s.UserRepository.Search(userContext, request)
+	users, total, err := s.userRepository.Search(userContext, request)
 	if err != nil {
-		s.Log.WithError(err).Error("Error retrieving users")
-		return nil, 0, apperrors.ErrUserSearchFailed
+		s.log.WithError(err).Error("Error retrieving users")
+		return nil, 0, errcode.ErrUserSearchFailed
 	}
 
 	responses := make([]*dto.UserResponse, len(users))
