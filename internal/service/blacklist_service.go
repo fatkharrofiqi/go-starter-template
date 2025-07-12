@@ -9,8 +9,8 @@ import (
 )
 
 type BlacklistService struct {
-	JwtService          *JwtService
-	BlacklistRepository repository.TokenBlacklistRepository
+	jwtService          *JwtService
+	blacklistRepository repository.TokenBlacklistRepository
 }
 
 func NewBlacklistService(jwtService *JwtService, repo repository.TokenBlacklistRepository) *BlacklistService {
@@ -19,7 +19,7 @@ func NewBlacklistService(jwtService *JwtService, repo repository.TokenBlacklistR
 
 func (b *BlacklistService) IsTokenBlacklisted(token string) error {
 	tokenHash := b.generateTokenHash(token)
-	logout, err := b.BlacklistRepository.IsBlacklisted(tokenHash)
+	logout, err := b.blacklistRepository.IsBlacklisted(tokenHash)
 	if err != nil {
 		return errcode.ErrRedisGet
 	}
@@ -39,7 +39,7 @@ func (b *BlacklistService) Add(token string) error {
 	claims, err := b.parseTokenClaims(token)
 	if err != nil {
 		// if parse failed, set default TTL
-		return b.BlacklistRepository.Add(tokenHash, 24*time.Hour)
+		return b.blacklistRepository.Add(tokenHash, 24*time.Hour)
 	}
 
 	// Set TTL based on expiration time token
@@ -49,7 +49,7 @@ func (b *BlacklistService) Add(token string) error {
 		return nil
 	}
 
-	if err := b.BlacklistRepository.Add(tokenHash, ttl); err != nil {
+	if err := b.blacklistRepository.Add(tokenHash, ttl); err != nil {
 		return errcode.ErrRedisSet
 	}
 
@@ -64,5 +64,5 @@ func (b *BlacklistService) generateTokenHash(token string) string {
 
 // Parse token to get claims
 func (b *BlacklistService) parseTokenClaims(token string) (*Claims, error) {
-	return b.JwtService.ValidateRefreshToken(token)
+	return b.jwtService.ValidateRefreshToken(token)
 }
