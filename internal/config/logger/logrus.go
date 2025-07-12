@@ -8,7 +8,6 @@ import (
 
 func NewLogger(config *env.Config) *logrus.Logger {
 	log := logrus.New()
-
 	log.SetLevel(logrus.Level(config.Log.Level))
 	log.SetFormatter(&logrus.TextFormatter{
 		ForceColors:     true,

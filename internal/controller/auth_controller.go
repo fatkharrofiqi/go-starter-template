@@ -28,18 +28,18 @@ func NewAuthController(authService *service.AuthService, logger *logrus.Logger, 
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	userContext, span := c.tracer.Start(ctx.UserContext(), "Login")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "Login")
 	defer span.End()
 
 	req := new(dto.LoginRequest)
 	if err := c.validation.ParseAndValidate(ctx, req); err != nil {
-		c.logger.WithError(err).Error("Failed to parse and validate login request")
+		c.logger.WithContext(spanCtx).WithError(err).Error("Failed to parse and validate login request")
 		return err
 	}
 
-	accessToken, refreshToken, err := c.authService.Login(userContext, req)
+	accessToken, refreshToken, err := c.authService.Login(spanCtx, req)
 	if err != nil {
-		c.logger.WithError(err).Warn("Invalid login attempt")
+		c.logger.WithContext(spanCtx).WithError(err).Warn("Invalid login attempt")
 		return err
 	}
 
@@ -51,18 +51,18 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	userContext, span := c.tracer.Start(ctx.UserContext(), "Register")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "Register")
 	defer span.End()
 
 	req := new(dto.RegisterRequest)
 	if err := c.validation.ParseAndValidate(ctx, req); err != nil {
-		c.logger.WithError(err).Error("Failed to parse and validate register request")
+		c.logger.WithContext(spanCtx).WithError(err).Error("Failed to parse and validate register request")
 		return err
 	}
 
-	user, err := c.authService.Register(userContext, req)
+	user, err := c.authService.Register(spanCtx, req)
 	if err != nil {
-		c.logger.WithError(err).Warn("User registration failed")
+		c.logger.WithContext(spanCtx).WithError(err).Warn("User registration failed")
 		return err
 	}
 
@@ -70,19 +70,19 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
-	userContext, span := c.tracer.Start(ctx.UserContext(), "RefreshToken")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "RefreshToken")
 	defer span.End()
 
 	refreshToken := ctx.Cookies("refresh_token")
 	if refreshToken == "" {
-		c.logger.Warn("Refresh token not found in cookies")
+		c.logger.WithContext(spanCtx).Warn("Refresh token not found in cookies")
 		return errcode.ErrUnauthorized
 	}
 
 	// Receive both access and refresh token
-	accessToken, newRefreshToken, err := c.authService.RefreshToken(userContext, refreshToken)
+	accessToken, newRefreshToken, err := c.authService.RefreshToken(spanCtx, refreshToken)
 	if err != nil {
-		c.logger.WithError(err).Warn("Invalid refresh token attempt")
+		c.logger.WithContext(spanCtx).WithError(err).Warn("Invalid refresh token attempt")
 		c.clearRefreshTokenCookie(ctx)
 		return err
 	}
@@ -96,35 +96,35 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Logout(ctx *fiber.Ctx) error {
-	userContext, span := c.tracer.Start(ctx.UserContext(), "Logout")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "Logout")
 	defer span.End()
 
 	authHeader := ctx.Get("Authorization")
 	if authHeader == "" {
-		c.logger.Warn("Authorization header not found")
+		c.logger.WithContext(spanCtx).Warn("Authorization header not found")
 		return errcode.ErrUnauthorized
 	}
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		c.logger.Warn("Bearer not found in Authorization header")
+		c.logger.WithContext(spanCtx).Warn("Bearer not found in Authorization header")
 		return errcode.ErrUnauthorized
 	}
 
 	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 	if accessToken == "" {
-		c.logger.Warn("Access token not found in Authorization header")
+		c.logger.WithContext(spanCtx).Warn("Access token not found in Authorization header")
 		return errcode.ErrUnauthorized
 	}
 
 	refreshToken := ctx.Cookies("refresh_token")
 	if refreshToken == "" {
-		c.logger.Warn("Refresh token not found in cookies")
+		c.logger.WithContext(spanCtx).Warn("Refresh token not found in cookies")
 		return errcode.ErrUnauthorized
 	}
 
-	err := c.authService.Logout(userContext, accessToken, refreshToken)
+	err := c.authService.Logout(spanCtx, accessToken, refreshToken)
 	if err != nil {
-		c.logger.WithError(err).Error("Failed to logout")
+		c.logger.WithContext(spanCtx).WithError(err).Error("Failed to logout")
 		return err
 	}
 

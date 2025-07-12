@@ -30,27 +30,27 @@ func NewUserService(db *gorm.DB, userRepository *repository.UserRepository, redi
 
 // GetUser retrieves a user by UUID.
 func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) {
-	userContext, span := s.tracer.Start(ctx, "GetUser")
+	spanCtx, span := s.tracer.Start(ctx, "GetUser")
 	defer span.End()
 
 	cacheKey := fmt.Sprintf("user:me:%s", uuid)
-	if cachedResponse, found := s.redisService.Get(userContext, cacheKey); found {
-		s.log.Info("user profile retrieved from Redis cache")
+	if cachedResponse, found := s.redisService.Get(spanCtx, cacheKey); found {
+		s.log.WithContext(spanCtx).Info("user profile retrieved from Redis cache")
 		return cachedResponse, nil
 	}
 
 	user := new(model.User)
-	if err := s.userRepository.FindByUUID(userContext, user, uuid); err != nil {
-		s.log.WithError(err).Warn("Failed to find user by UUID")
+	if err := s.userRepository.FindByUUID(spanCtx, user, uuid); err != nil {
+		s.log.WithContext(spanCtx).WithError(err).Warn("Failed to find user by UUID")
 		return "", errcode.ErrUserNotFound
 	}
 
-	result, err := s.redisService.Set(userContext, cacheKey, dto.WebResponse[*dto.UserResponse]{
+	result, err := s.redisService.Set(spanCtx, cacheKey, dto.WebResponse[*dto.UserResponse]{
 		Data: converter.UserToResponse(user),
 	}, 5*time.Minute)
 
 	if err != nil {
-		s.log.WithError(err).Warn("failed to save user response to redis")
+		s.log.WithContext(spanCtx).WithError(err).Warn("failed to save user response to redis")
 		return "", errcode.ErrRedisSet
 	}
 
@@ -59,12 +59,12 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (string, error) 
 
 // Search retrieves users based on search criteria.
 func (s *UserService) Search(ctx context.Context, request *dto.SearchUserRequest) ([]*dto.UserResponse, int64, error) {
-	userContext, span := s.tracer.Start(ctx, "Search")
+	spanCtx, span := s.tracer.Start(ctx, "Search")
 	defer span.End()
 
-	users, total, err := s.userRepository.Search(userContext, request)
+	users, total, err := s.userRepository.Search(spanCtx, request)
 	if err != nil {
-		s.log.WithError(err).Error("Error retrieving users")
+		s.log.WithContext(spanCtx).WithError(err).Error("Error retrieving users")
 		return nil, 0, errcode.ErrUserSearchFailed
 	}
 

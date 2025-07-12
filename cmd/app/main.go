@@ -13,8 +13,8 @@ import (
 
 func main() {
 	config := env.NewConfig()
+	web := web.NewFiber(config)
 	log := logger.NewLogger(config)
-	web := web.NewFiber(log, config)
 	redis := redis.NewRedis(log, config)
 	db := database.NewDatabase(log, config)
 	monitoring := monitor.NewMonitoring(log, config)

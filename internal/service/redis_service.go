@@ -23,37 +23,38 @@ func NewRedisService(client *redis.Client, logger *logrus.Logger) *RedisService 
 
 // Get retrieves a string JSON value from Redis result.
 func (r *RedisService) Get(ctx context.Context, key string) (string, bool) {
-	userContext, span := r.tracer.Start(ctx, "Get")
+	spanCtx, span := r.tracer.Start(ctx, "Get")
 	defer span.End()
 
-	cached, err := r.client.Get(userContext, key).Result()
+	cached, err := r.client.Get(spanCtx, key).Result()
 	if err == redis.Nil {
 		// Cache miss
+		r.logger.WithContext(spanCtx).WithError(err).Info("Cache miss")
 		return "", false
 	}
 
 	if err != nil {
 		// Redis error
-		r.logger.WithError(err).Error("redis get error")
+		r.logger.WithContext(spanCtx).WithError(err).Error("Redis gor error")
 		return "", false
 	}
 
-	r.logger.WithField("key", key).Info("redis cache hit")
+	r.logger.WithContext(spanCtx).WithField("key", key).Info("Redis cache hit")
 	return cached, true
 }
 
 // Set marshals value to JSON and stores it in Redis with TTL.
 func (r *RedisService) Set(ctx context.Context, key string, data interface{}, ttl time.Duration) (string, error) {
-	userContext, span := r.tracer.Start(ctx, "Set")
+	spanCtx, span := r.tracer.Start(ctx, "Set")
 	defer span.End()
 
 	json, err := json.Marshal(data)
 	if err != nil {
-		r.logger.WithError(err).Warn("failed to marshal user response")
+		r.logger.WithContext(spanCtx).WithError(err).Warn("Failed to marshal user response")
 		return "", err
 	}
-	if err := r.client.Set(userContext, key, json, ttl).Err(); err != nil {
-		r.logger.WithError(err).Error("failed to store data to redis")
+	if err := r.client.Set(spanCtx, key, json, ttl).Err(); err != nil {
+		r.logger.WithContext(spanCtx).WithError(err).Error("Failed to store data to redis")
 		return "", err
 	}
 

@@ -36,8 +36,8 @@ func (app *BootstrapConfig) Bootstrap() {
 	blacklistRepository := repository.NewRedisTokenBlacklist(app.redis)
 
 	// setup use service
-	jwtService := service.NewJwtService(app.config)
-	blacklistService := service.NewBlacklistService(jwtService, blacklistRepository)
+	jwtService := service.NewJwtService(app.log, app.config)
+	blacklistService := service.NewBlacklistService(app.log, jwtService, blacklistRepository)
 	authService := service.NewAuthService(app.db, jwtService, userRepository, blacklistService, app.log)
 	redisService := service.NewRedisService(app.redis, app.log)
 	userService := service.NewUserService(app.db, userRepository, redisService, app.log)

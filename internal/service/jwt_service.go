@@ -1,12 +1,15 @@
 package service
 
 import (
-	"errors"
+	"context"
 	"go-starter-template/internal/config/env"
 	"go-starter-template/internal/utils/errcode"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Claims struct {
@@ -16,15 +19,20 @@ type Claims struct {
 }
 
 type JwtService struct {
+	log    *logrus.Logger
 	config *env.Config
+	tracer trace.Tracer
 }
 
-func NewJwtService(config *env.Config) *JwtService {
-	return &JwtService{config}
+func NewJwtService(log *logrus.Logger, config *env.Config) *JwtService {
+	return &JwtService{log, config, otel.Tracer("JwtService")}
 }
 
 // GenerateAccessToken creates a short-lived JWT access token
-func (j *JwtService) GenerateAccessToken(uuid string) (string, error) {
+func (j *JwtService) GenerateAccessToken(ctx context.Context, uuid string) (string, error) {
+	_, span := j.tracer.Start(ctx, "GenerateAccessToken")
+	defer span.End()
+
 	claims := Claims{
 		UUID: uuid,
 		Type: "access",
@@ -39,7 +47,10 @@ func (j *JwtService) GenerateAccessToken(uuid string) (string, error) {
 }
 
 // GenerateRefreshToken creates a long-lived JWT refresh token
-func (j *JwtService) GenerateRefreshToken(uuid string) (string, error) {
+func (j *JwtService) GenerateRefreshToken(ctx context.Context, uuid string) (string, error) {
+	_, span := j.tracer.Start(ctx, "GenerateRefreshToken")
+	defer span.End()
+
 	claims := Claims{
 		UUID: uuid,
 		Type: "refresh",
@@ -53,30 +64,42 @@ func (j *JwtService) GenerateRefreshToken(uuid string) (string, error) {
 	return token.SignedString([]byte(j.config.GetRefreshSecret()))
 }
 
-func (j *JwtService) ValidateAccessToken(token string) (*Claims, error) {
-	return j.validateToken(token, j.config.GetAccessSecret())
+func (j *JwtService) ValidateAccessToken(ctx context.Context, token string) (*Claims, error) {
+	spanCtx, span := j.tracer.Start(ctx, "ValidateAccessToken")
+	defer span.End()
+
+	return j.validateToken(spanCtx, token, j.config.GetAccessSecret())
 }
 
-func (j *JwtService) ValidateRefreshToken(token string) (*Claims, error) {
-	return j.validateToken(token, j.config.GetRefreshSecret())
+func (j *JwtService) ValidateRefreshToken(ctx context.Context, token string) (*Claims, error) {
+	spanCtx, span := j.tracer.Start(ctx, "ValidateRefreshToken")
+	defer span.End()
+
+	return j.validateToken(spanCtx, token, j.config.GetRefreshSecret())
 }
 
 // ValidateToken verifies a JWT token and returns the claims if valid
-func (j *JwtService) validateToken(tokenString string, secretKey string) (*Claims, error) {
+func (j *JwtService) validateToken(ctx context.Context, tokenString string, secretKey string) (*Claims, error) {
+	spanCtx, span := j.tracer.Start(ctx, "validateToken")
+	defer span.End()
+
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+			j.log.WithContext(spanCtx).Error("Token method not match")
+			return nil, errcode.ErrUnexpectedSignMethod
 		}
 		return []byte(secretKey), nil
 	})
 
 	if err != nil {
+		j.log.WithContext(spanCtx).WithError(err).Error("Failed to parse with claims")
 		return nil, err
 	}
 
 	if !token.Valid {
+		j.log.WithContext(spanCtx).WithError(err).Error("Token invalid")
 		return nil, errcode.ErrInvalidToken
 	}
 

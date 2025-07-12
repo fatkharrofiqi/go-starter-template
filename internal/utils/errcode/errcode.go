@@ -17,6 +17,7 @@ var (
 	ErrBearerHeader           = errors.New("bearer is required")
 	ErrAccessTokenMissing     = errors.New("access token is required")
 	ErrTokenIsExpired         = errors.New("token is expired")
+	ErrUnexpectedSignMethod   = errors.New("unexpected signing method")
 
 	// Access Urls Errors
 	ErrCsrfTokenHeader      = errors.New("csrf token is required")
@@ -80,6 +81,7 @@ var errorStatusMap = map[error]int{
 	ErrMarshal:                fiber.StatusInternalServerError,
 	ErrRedisSet:               fiber.StatusInternalServerError,
 	ErrRedisGet:               fiber.StatusInternalServerError,
+	ErrUnexpectedSignMethod:   fiber.StatusInternalServerError,
 
 	// 404 Not Found Errors
 	ErrUserNotFound:     fiber.StatusNotFound,

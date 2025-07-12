@@ -6,17 +6,22 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 )
 
 func CsrfMiddleware(csrfService *service.CsrfService, blacklistService *service.BlacklistService, log *logrus.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		tracer := otel.Tracer("AuthMiddleware")
+		spanCtx, span := tracer.Start(c.UserContext(), "AuthMiddleware")
+		defer span.End()
+
 		csrfToken := c.Get("X-CSRF-Token")
 		if csrfToken == "" {
 			log.Error("csrf token is required")
 			return errcode.ErrCsrfTokenHeader
 		}
 
-		if err := blacklistService.IsTokenBlacklisted(csrfToken); err != nil {
+		if err := blacklistService.IsTokenBlacklisted(spanCtx, csrfToken); err != nil {
 			log.Error("csrf token is already used")
 			return errcode.ErrTokenBlacklisted
 		}
@@ -32,7 +37,7 @@ func CsrfMiddleware(csrfService *service.CsrfService, blacklistService *service.
 			return errcode.ErrCsrfTokenInvalidPath
 		}
 
-		if err := blacklistService.Add(csrfToken); err != nil {
+		if err := blacklistService.Add(spanCtx, csrfToken); err != nil {
 			log.WithError(err).Error("can't blacklist the csrf token")
 			return errcode.ErrCantBlacklistToken
 		}
