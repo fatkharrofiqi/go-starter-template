@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"go-starter-template/internal/constant"
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/errcode"
 	"strings"
@@ -16,31 +17,32 @@ func AuthMiddleware(jwtService *service.JwtService, blacklistService *service.Bl
 		spanCtx, span := tracer.Start(c.UserContext(), "AuthMiddleware")
 		defer span.End()
 
-		authHeader := c.Get("Authorization")
-		if authHeader == "" {
-			log.WithContext(spanCtx).Error("authorization header required")
-			return errcode.ErrAuthorizationHeader
-		}
+		logger := log.WithContext(spanCtx)
 
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			log.WithContext(spanCtx).Warn("bearer not found in Authorization header")
+		authHeader := c.Get("Authorization")
+		if len(authHeader) < 8 || !strings.HasPrefix(authHeader, "Bearer ") {
+			if authHeader == "" {
+				logger.Error("authorization header missing")
+				return errcode.ErrAuthorizationHeader
+			}
+			logger.Warn("invalid authorization header format")
 			return errcode.ErrBearerHeader
 		}
 
-		accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+		accessToken := authHeader[7:] // TrimPrefix without allocation
 		if accessToken == "" {
-			log.WithContext(spanCtx).Warn("access token not found in Authorization header")
+			logger.Warn("access token missing in header")
 			return errcode.ErrAccessTokenMissing
 		}
 
-		if err := blacklistService.IsTokenBlacklisted(spanCtx, accessToken); err != nil {
-			log.WithContext(spanCtx).Warn("already logout")
+		if err := blacklistService.IsTokenBlacklisted(spanCtx, accessToken, constant.TokenTypeAccess); err != nil {
+			logger.Warn("access token is blacklisted")
 			return err
 		}
 
 		claims, err := jwtService.ValidateAccessToken(spanCtx, accessToken)
 		if err != nil {
-			log.WithContext(spanCtx).WithError(err).Error("token is expired")
+			logger.WithError(err).Error("access token is invalid or expired")
 			return errcode.ErrTokenIsExpired
 		}
 

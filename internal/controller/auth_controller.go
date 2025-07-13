@@ -15,6 +15,20 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	refreshTokenCookieName = "refresh_token"
+	bearerPrefix           = "Bearer "
+)
+
+var baseRefreshTokenCookie = fiber.Cookie{
+	Name:     refreshTokenCookieName,
+	HTTPOnly: true,
+	Secure:   true,
+	SameSite: "Strict",
+	Path:     "/",
+	Domain:   "",
+}
+
 type AuthController struct {
 	authService *service.AuthService
 	logger      *logrus.Logger
@@ -28,22 +42,29 @@ func NewAuthController(authService *service.AuthService, logger *logrus.Logger, 
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	spanCtx, span := c.tracer.Start(ctx.UserContext(), "Login")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "AuthController.Login")
 	defer span.End()
 
+	logger := c.logger.WithContext(spanCtx)
+
+	_, parseSpan := c.tracer.Start(spanCtx, "ParseAndValidate")
 	req := new(dto.LoginRequest)
 	if err := c.validation.ParseAndValidate(ctx, req); err != nil {
-		c.logger.WithContext(spanCtx).WithError(err).Error("Failed to parse and validate login request")
+		parseSpan.End()
+		logger.WithError(err).Error("Failed to parse and validate login request")
 		return err
 	}
+	parseSpan.End()
 
 	accessToken, refreshToken, err := c.authService.Login(spanCtx, req)
 	if err != nil {
-		c.logger.WithContext(spanCtx).WithError(err).Warn("Invalid login attempt")
+		logger.WithError(err).Warn("Invalid login attempt")
 		return err
 	}
 
+	_, setCookieSpan := c.tracer.Start(spanCtx, "SetCookie")
 	c.setRefreshTokenCookie(ctx, refreshToken)
+	setCookieSpan.End()
 
 	return ctx.JSON(dto.WebResponse[*dto.TokenResponse]{Data: &dto.TokenResponse{
 		AccessToken: accessToken,
@@ -51,18 +72,23 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	spanCtx, span := c.tracer.Start(ctx.UserContext(), "Register")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "AuthController.Register")
 	defer span.End()
 
+	logger := c.logger.WithContext(spanCtx)
+
+	_, parseSpan := c.tracer.Start(spanCtx, "ParseAndValidate")
 	req := new(dto.RegisterRequest)
 	if err := c.validation.ParseAndValidate(ctx, req); err != nil {
-		c.logger.WithContext(spanCtx).WithError(err).Error("Failed to parse and validate register request")
+		parseSpan.End()
+		logger.WithError(err).Error("Failed to parse and validate register request")
 		return err
 	}
+	parseSpan.End()
 
 	user, err := c.authService.Register(spanCtx, req)
 	if err != nil {
-		c.logger.WithContext(spanCtx).WithError(err).Warn("User registration failed")
+		logger.WithError(err).Warn("User registration failed")
 		return err
 	}
 
@@ -70,25 +96,30 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
-	spanCtx, span := c.tracer.Start(ctx.UserContext(), "RefreshToken")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "AuthController.RefreshToken")
 	defer span.End()
 
-	refreshToken := ctx.Cookies("refresh_token")
+	logger := c.logger.WithContext(spanCtx)
+
+	_, readCookeSpan := c.tracer.Start(spanCtx, "ReadCookie")
+	refreshToken := ctx.Cookies(refreshTokenCookieName)
 	if refreshToken == "" {
-		c.logger.WithContext(spanCtx).Warn("Refresh token not found in cookies")
+		readCookeSpan.End()
+		logger.Warn("Missing refresh token cookie")
 		return errcode.ErrUnauthorized
 	}
+	readCookeSpan.End()
 
-	// Receive both access and refresh token
 	accessToken, newRefreshToken, err := c.authService.RefreshToken(spanCtx, refreshToken)
 	if err != nil {
-		c.logger.WithContext(spanCtx).WithError(err).Warn("Invalid refresh token attempt")
+		logger.WithError(err).Warn("Invalid refresh token attempt")
 		c.clearRefreshTokenCookie(ctx)
 		return err
 	}
 
-	// Set new refresh token in cookie
+	_, setCookieSpan := c.tracer.Start(spanCtx, "SetCookie")
 	c.setRefreshTokenCookie(ctx, newRefreshToken)
+	setCookieSpan.End()
 
 	return ctx.JSON(dto.WebResponse[*dto.TokenResponse]{Data: &dto.TokenResponse{
 		AccessToken: accessToken,
@@ -96,67 +127,57 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Logout(ctx *fiber.Ctx) error {
-	spanCtx, span := c.tracer.Start(ctx.UserContext(), "Logout")
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "AuthController.Logout")
 	defer span.End()
 
+	logger := c.logger.WithContext(spanCtx)
+
 	authHeader := ctx.Get("Authorization")
-	if authHeader == "" {
-		c.logger.WithContext(spanCtx).Warn("Authorization header not found")
+	if len(authHeader) < len(bearerPrefix) || !strings.HasPrefix(authHeader, bearerPrefix) {
+		logger.Warn("Invalid or missing Authorization header")
 		return errcode.ErrUnauthorized
 	}
 
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		c.logger.WithContext(spanCtx).Warn("Bearer not found in Authorization header")
-		return errcode.ErrUnauthorized
-	}
-
-	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+	accessToken := authHeader[len(bearerPrefix):]
 	if accessToken == "" {
-		c.logger.WithContext(spanCtx).Warn("Access token not found in Authorization header")
+		logger.Warn("Access token is empty after Bearer prefix")
 		return errcode.ErrUnauthorized
 	}
-
-	refreshToken := ctx.Cookies("refresh_token")
+	_, readCookeSpan := c.tracer.Start(spanCtx, "ReadCookie")
+	refreshToken := ctx.Cookies(refreshTokenCookieName)
 	if refreshToken == "" {
-		c.logger.WithContext(spanCtx).Warn("Refresh token not found in cookies")
+		readCookeSpan.End()
+		logger.Warn("Missing refresh token cookie")
 		return errcode.ErrUnauthorized
 	}
+	readCookeSpan.End()
 
-	err := c.authService.Logout(spanCtx, accessToken, refreshToken)
-	if err != nil {
-		c.logger.WithContext(spanCtx).WithError(err).Error("Failed to logout")
+	if err := c.authService.Logout(spanCtx, accessToken, refreshToken); err != nil {
+		logger.WithError(err).Error("Logout failed")
 		return err
 	}
 
+	_, clearCookieSpan := c.tracer.Start(spanCtx, "ClearCookie")
 	c.clearRefreshTokenCookie(ctx)
+	clearCookieSpan.End()
 
 	return ctx.JSON(dto.WebResponse[string]{Data: "Logout successfully"})
 }
 
-// Helper method to set refresh token cookie with secure options
+// Helper to set refresh token cookie with secure options
 func (c *AuthController) setRefreshTokenCookie(ctx *fiber.Ctx, refreshToken string) {
-	ctx.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		Expires:  time.Now().Add(c.config.GetRefreshTokenExpiration()),
-		HTTPOnly: true,     // Prevent XSS attacks
-		Secure:   true,     // Only send over HTTPS
-		SameSite: "Strict", // Prevent CSRF attacks
-		Path:     "/",      // Available for all paths
-		Domain:   "",       // Use current domain
-	})
+	cookie := baseRefreshTokenCookie
+	cookie.Value = refreshToken
+	cookie.Expires = time.Now().Add(c.config.GetRefreshTokenExpiration())
+
+	ctx.Cookie(&cookie)
 }
 
-// Helper method to clear refresh token cookie
+// Helper to clear refresh token cookie
 func (c *AuthController) clearRefreshTokenCookie(ctx *fiber.Ctx) {
-	ctx.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    "",
-		Expires:  time.Now().Add(-1 * time.Hour), // Set to past time
-		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
-		Path:     "/",
-		Domain:   "",
-	})
+	cookie := baseRefreshTokenCookie
+	cookie.Value = ""
+	cookie.Expires = time.Now().Add(-1 * time.Hour)
+
+	ctx.Cookie(&cookie)
 }

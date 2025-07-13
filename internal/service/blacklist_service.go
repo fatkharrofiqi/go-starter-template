@@ -2,8 +2,7 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"go-starter-template/internal/constant"
 	"go-starter-template/internal/repository"
 	"go-starter-template/internal/utils/errcode"
 	"time"
@@ -24,66 +23,73 @@ func NewBlacklistService(log *logrus.Logger, jwtService *JwtService, repo reposi
 	return &BlacklistService{log, jwtService, repo, otel.Tracer("BlacklistService")}
 }
 
-func (b *BlacklistService) IsTokenBlacklisted(ctx context.Context, token string) error {
-	spanCtx, span := b.tracer.Start(ctx, "IsTokenBlacklisted")
+func (b *BlacklistService) IsTokenBlacklisted(ctx context.Context, token string, tokenType constant.TokenType) error {
+	spanCtx, span := b.tracer.Start(ctx, "BlacklistService.IsTokenBlacklisted")
 	defer span.End()
 
-	tokenHash := b.generateTokenHash(token)
-	logout, err := b.blacklistRepository.IsBlacklisted(tokenHash)
+	logger := b.log.WithContext(spanCtx)
+
+	_, hashSpan := b.tracer.Start(spanCtx, "GenerateTokenHash")
+	tokenHash := b.jwtService.GenerateTokenHash(token)
+	hashSpan.End()
+
+	_, checkSpan := b.tracer.Start(spanCtx, "CheckTokenBlacklistInRedis")
+	blacklisted, err := b.blacklistRepository.IsBlacklisted(tokenHash, tokenType)
+	checkSpan.End()
 	if err != nil {
-		b.log.WithContext(spanCtx).WithError(err).Error("Get redis failed")
+		logger.WithError(err).Error("failed to get token from Redis")
 		return errcode.ErrRedisGet
 	}
 
-	if logout {
-		b.log.WithContext(spanCtx).Error("Already logout")
+	if blacklisted {
+		logger.Warn("token is already blacklisted")
 		return errcode.ErrUnauthorized
 	}
 
 	return nil
 }
 
-func (b *BlacklistService) Add(ctx context.Context, token string) error {
-	spanCtx, span := b.tracer.Start(ctx, "Add")
+func (b *BlacklistService) Add(ctx context.Context, token string, tokenType constant.TokenType) error {
+	spanCtx, span := b.tracer.Start(ctx, "BlacklistService.Add")
 	defer span.End()
 
-	// Generate hash for security & efficiency
-	tokenHash := b.generateTokenHash(token)
+	logger := b.log.WithContext(spanCtx)
 
-	// Parse token to get expiration time
-	claims, err := b.parseTokenClaims(spanCtx, token)
+	_, hashSpan := b.tracer.Start(spanCtx, "GenerateTokenHash")
+	tokenHash := b.jwtService.GenerateTokenHash(token)
+	hashSpan.End()
+
+	parseCtx, parseSpan := b.tracer.Start(spanCtx, "ParseTokenClaims")
+	claims, err := b.jwtService.ParseTokenClaims(parseCtx, token, tokenType)
+	parseSpan.End()
 	if err != nil {
-		// if parse failed, set default TTL
-		b.log.WithContext(spanCtx).WithError(err).Error("Failed to parse claims")
-		return b.blacklistRepository.Add(tokenHash, 24*time.Hour)
-	}
-
-	// Set TTL based on expiration time token
-	ttl := time.Until(claims.ExpiresAt.Time)
-	if ttl <= 0 {
-		// Token is expired, no need to blacklist
-		b.log.WithContext(spanCtx).Info("Token is expired, no need to blacklist")
+		logger.WithError(err).Warn("could not parse token claims; fallback to default TTL")
+		// Add fallback TTL to Redis
+		_, fallbackSpan := b.tracer.Start(parseCtx, "AddFallbackTTLToRedis")
+		err := b.blacklistRepository.Add(tokenHash, tokenType, 24*time.Hour)
+		fallbackSpan.End()
+		if err != nil {
+			logger.WithError(err).Error("failed to store fallback token in Redis")
+			return errcode.ErrRedisSet
+		}
 		return nil
 	}
 
-	if err := b.blacklistRepository.Add(tokenHash, ttl); err != nil {
-		b.log.WithContext(spanCtx).Info("Set redis failed")
+	_, ttlSpan := b.tracer.Start(spanCtx, "CalculateTTL")
+	ttl := time.Until(claims.ExpiresAt.Time)
+	ttlSpan.End()
+	if ttl <= 0 {
+		logger.Info("token is expired; skipping blacklist")
+		return nil
+	}
+
+	_, addSpan := b.tracer.Start(spanCtx, "AddTokenHashToRedisWithTTL")
+	err = b.blacklistRepository.Add(tokenHash, tokenType, ttl)
+	addSpan.End()
+	if err != nil {
+		logger.WithError(err).Error("failed to store token in redis")
 		return errcode.ErrRedisSet
 	}
 
 	return nil
-}
-
-// Generate SHA256 hash
-func (b *BlacklistService) generateTokenHash(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(hash[:])
-}
-
-// Parse token to get claims
-func (b *BlacklistService) parseTokenClaims(ctx context.Context, token string) (*Claims, error) {
-	spanCtx, span := b.tracer.Start(ctx, "parseTokenClaims")
-	defer span.End()
-
-	return b.jwtService.ValidateRefreshToken(spanCtx, token)
 }

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"go-starter-template/internal/constant"
 	"go-starter-template/internal/service"
 	"go-starter-template/internal/utils/errcode"
 
@@ -21,7 +22,7 @@ func CsrfMiddleware(csrfService *service.CsrfService, blacklistService *service.
 			return errcode.ErrCsrfTokenHeader
 		}
 
-		if err := blacklistService.IsTokenBlacklisted(spanCtx, csrfToken); err != nil {
+		if err := blacklistService.IsTokenBlacklisted(spanCtx, csrfToken, constant.TokenTypeCsrf); err != nil {
 			log.Error("csrf token is already used")
 			return errcode.ErrTokenBlacklisted
 		}
@@ -37,7 +38,7 @@ func CsrfMiddleware(csrfService *service.CsrfService, blacklistService *service.
 			return errcode.ErrCsrfTokenInvalidPath
 		}
 
-		if err := blacklistService.Add(spanCtx, csrfToken); err != nil {
+		if err := blacklistService.Add(spanCtx, csrfToken, constant.TokenTypeCsrf); err != nil {
 			log.WithError(err).Error("can't blacklist the csrf token")
 			return errcode.ErrCantBlacklistToken
 		}

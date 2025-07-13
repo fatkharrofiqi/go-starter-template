@@ -2,7 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"go-starter-template/internal/config/env"
+	"go-starter-template/internal/constant"
 	"go-starter-template/internal/utils/errcode"
 	"time"
 
@@ -30,7 +34,7 @@ func NewJwtService(log *logrus.Logger, config *env.Config) *JwtService {
 
 // GenerateAccessToken creates a short-lived JWT access token
 func (j *JwtService) GenerateAccessToken(ctx context.Context, uuid string) (string, error) {
-	_, span := j.tracer.Start(ctx, "GenerateAccessToken")
+	_, span := j.tracer.Start(ctx, "JwtService.GenerateAccessToken")
 	defer span.End()
 
 	claims := Claims{
@@ -48,7 +52,7 @@ func (j *JwtService) GenerateAccessToken(ctx context.Context, uuid string) (stri
 
 // GenerateRefreshToken creates a long-lived JWT refresh token
 func (j *JwtService) GenerateRefreshToken(ctx context.Context, uuid string) (string, error) {
-	_, span := j.tracer.Start(ctx, "GenerateRefreshToken")
+	_, span := j.tracer.Start(ctx, "JwtService.GenerateRefreshToken")
 	defer span.End()
 
 	claims := Claims{
@@ -65,14 +69,14 @@ func (j *JwtService) GenerateRefreshToken(ctx context.Context, uuid string) (str
 }
 
 func (j *JwtService) ValidateAccessToken(ctx context.Context, token string) (*Claims, error) {
-	spanCtx, span := j.tracer.Start(ctx, "ValidateAccessToken")
+	spanCtx, span := j.tracer.Start(ctx, "JwtService.ValidateAccessToken")
 	defer span.End()
 
 	return j.validateToken(spanCtx, token, j.config.GetAccessSecret())
 }
 
 func (j *JwtService) ValidateRefreshToken(ctx context.Context, token string) (*Claims, error) {
-	spanCtx, span := j.tracer.Start(ctx, "ValidateRefreshToken")
+	spanCtx, span := j.tracer.Start(ctx, "JwtService.ValidateRefreshToken")
 	defer span.End()
 
 	return j.validateToken(spanCtx, token, j.config.GetRefreshSecret())
@@ -80,28 +84,51 @@ func (j *JwtService) ValidateRefreshToken(ctx context.Context, token string) (*C
 
 // ValidateToken verifies a JWT token and returns the claims if valid
 func (j *JwtService) validateToken(ctx context.Context, tokenString string, secretKey string) (*Claims, error) {
-	spanCtx, span := j.tracer.Start(ctx, "validateToken")
+	spanCtx, span := j.tracer.Start(ctx, "JwtService.validateToken")
 	defer span.End()
+
+	logger := j.log.WithContext(spanCtx)
 
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			j.log.WithContext(spanCtx).Error("Token method not match")
+			logger.Error("Token method not match")
 			return nil, errcode.ErrUnexpectedSignMethod
 		}
 		return []byte(secretKey), nil
 	})
 
 	if err != nil {
-		j.log.WithContext(spanCtx).WithError(err).Error("Failed to parse with claims")
+		logger.WithError(err).Error("Failed to parse with claims")
 		return nil, err
 	}
 
 	if !token.Valid {
-		j.log.WithContext(spanCtx).WithError(err).Error("Token invalid")
+		logger.WithError(err).Error("Token invalid")
 		return nil, errcode.ErrInvalidToken
 	}
 
 	return claims, nil
+}
+
+// Generate SHA256 hash
+func (j *JwtService) GenerateTokenHash(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
+// Parse token to get claims
+func (j *JwtService) ParseTokenClaims(ctx context.Context, token string, tokenType constant.TokenType) (*Claims, error) {
+	spanCtx, span := j.tracer.Start(ctx, "JwtService.parseTokenClaims")
+	defer span.End()
+
+	switch tokenType {
+	case constant.TokenTypeAccess:
+		return j.ValidateAccessToken(spanCtx, token)
+	case constant.TokenTypeRefresh:
+		return j.ValidateRefreshToken(spanCtx, token)
+	default:
+		return nil, fmt.Errorf("unsupported token type: %s", tokenType)
+	}
 }

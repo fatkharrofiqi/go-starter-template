@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"go-starter-template/internal/constant"
 	"sync"
 	"time"
 
@@ -9,8 +11,8 @@ import (
 )
 
 type TokenBlacklistRepository interface {
-	Add(token string, duration time.Duration) error
-	IsBlacklisted(token string) (bool, error)
+	Add(token string, tokenType constant.TokenType, duration time.Duration) error
+	IsBlacklisted(token string, tokenType constant.TokenType) (bool, error)
 }
 
 type TokenBlacklist struct {
@@ -46,12 +48,12 @@ func NewRedisTokenBlacklist(client *redis.Client) *RedisTokenBlacklist {
 	return &RedisTokenBlacklist{client, context.Background()}
 }
 
-func (r *RedisTokenBlacklist) Add(token string, duration time.Duration) error {
-	return r.client.Set(r.ctx, "blacklist:"+token, "1", duration).Err()
+func (r *RedisTokenBlacklist) Add(token string, tokenType constant.TokenType, duration time.Duration) error {
+	return r.client.Set(r.ctx, fmt.Sprintf("blacklist:%s:%s", tokenType, token), "1", duration).Err()
 }
 
-func (r *RedisTokenBlacklist) IsBlacklisted(token string) (bool, error) {
-	result, err := r.client.Get(r.ctx, "blacklist:"+token).Result()
+func (r *RedisTokenBlacklist) IsBlacklisted(token string, tokenType constant.TokenType) (bool, error) {
+	result, err := r.client.Get(r.ctx, fmt.Sprintf("blacklist:%s:%s", tokenType, token)).Result()
 	if err == redis.Nil {
 		return false, nil
 	}
