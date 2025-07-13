@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -83,10 +84,12 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 
 	existingUserCount, err := s.userRepository.CountByEmail(txCtx, req.Email)
 	if err != nil {
+		tx.Rollback()
 		logger.WithError(err).Error("Database error checking existing user")
 		return nil, errcode.ErrDatabaseError
 	}
 	if existingUserCount > 0 {
+		tx.Rollback()
 		logger.Warn("Attempt to register an already existing email")
 		return nil, errcode.ErrUserAlreadyExists
 	}
@@ -95,6 +98,7 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	hashSpan.End()
 	if err != nil {
+		tx.Rollback()
 		logger.WithError(err).Error("Failed to hash password")
 		return nil, errcode.ErrPasswordEncryption
 	}
@@ -127,12 +131,12 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 }
 
 // RefreshToken generates a new access token using a valid refresh token.
-func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (accessToken, newRefreshToken string, err error) {
 	spanCtx, span := s.tracer.Start(ctx, "AuthService.RefreshToken")
 	defer span.End()
 	logger := s.logger.WithContext(spanCtx)
 
-	err := s.blacklistService.IsTokenBlacklisted(spanCtx, refreshToken, constant.TokenTypeRefresh)
+	err = s.blacklistService.IsTokenBlacklisted(spanCtx, refreshToken, constant.TokenTypeRefresh)
 	if err != nil {
 		logger.WithError(err).Error("Already logout")
 		return "", "", errcode.ErrUnauthorized
@@ -144,16 +148,23 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (st
 		return "", "", errcode.ErrInvalidToken
 	}
 
-	accessToken, err := s.jwtService.GenerateAccessToken(spanCtx, claims.UUID)
-	if err != nil {
-		logger.WithError(err).Error("Error generating new access token")
-		return "", "", errcode.ErrAccessTokenGeneration
-	}
+	eg, egCtx := errgroup.WithContext(spanCtx)
+	eg.Go(func() error {
+		if accessToken, err = s.jwtService.GenerateAccessToken(egCtx, claims.UUID); err != nil {
+			return errcode.ErrAccessTokenGeneration
+		}
+		return nil
+	})
+	eg.Go(func() error {
+		if newRefreshToken, err = s.jwtService.GenerateRefreshToken(egCtx, claims.UUID); err != nil {
+			return errcode.ErrRefreshTokenGeneration
+		}
+		return nil
+	})
 
-	newRefreshToken, err := s.jwtService.GenerateRefreshToken(spanCtx, claims.UUID)
-	if err != nil {
-		logger.WithError(err).Error("Error generating new refresh token")
-		return "", "", errcode.ErrRefreshTokenGeneration
+	if err := eg.Wait(); err != nil {
+		logger.WithError(err).Error("Error generating new tokens")
+		return "", "", err
 	}
 
 	if err := s.blacklistService.Add(spanCtx, refreshToken, constant.TokenTypeRefresh); err != nil {
@@ -168,15 +179,19 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (st
 func (s *AuthService) Logout(ctx context.Context, accessToken, refreshToken string) error {
 	spanCtx, span := s.tracer.Start(ctx, "AuthService.Logout")
 	defer span.End()
+
 	logger := s.logger.WithContext(spanCtx)
 
-	if err := s.blacklistService.Add(spanCtx, accessToken, constant.TokenTypeAccess); err != nil {
-		logger.WithError(err).Error("Failed to invalidate access token to redis")
-		return err
-	}
+	eg, egCtx := errgroup.WithContext(spanCtx)
+	eg.Go(func() error {
+		return s.blacklistService.Add(egCtx, accessToken, constant.TokenTypeAccess)
+	})
+	eg.Go(func() error {
+		return s.blacklistService.Add(egCtx, refreshToken, constant.TokenTypeRefresh)
+	})
 
-	if err := s.blacklistService.Add(spanCtx, refreshToken, constant.TokenTypeRefresh); err != nil {
-		logger.WithError(err).Error("Failed to invalidate refresh token to redis")
+	if err := eg.Wait(); err != nil {
+		logger.WithError(err).Error("Failed to invalidate tokens")
 		return err
 	}
 
