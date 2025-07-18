@@ -4,6 +4,7 @@ import (
 	"go-starter-template/internal/config/env"
 	"go-starter-template/internal/config/validation"
 	"go-starter-template/internal/dto"
+	"go-starter-template/internal/middleware"
 	"go-starter-template/internal/utils/errcode"
 
 	"github.com/goccy/go-json"
@@ -24,6 +25,7 @@ func NewFiber(config *env.Config) *fiber.App {
 
 	// Recover middleware to prevent crashes from panics
 	app.Use(recover.New())
+	app.Use(middleware.Cors(config))
 	app.Use(otelfiber.Middleware())
 
 	return app

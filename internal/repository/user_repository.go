@@ -42,15 +42,13 @@ func (r *UserRepository) FindByUUID(ctx context.Context, user *model.User, uuid 
 
 // Search returns a list of users and total count based on filter and pagination.
 func (r *UserRepository) Search(ctx context.Context, request *dto.SearchUserRequest) ([]*model.User, int64, error) {
-	db := r.Repository.getDb(ctx).Scopes(r.FilterUser(request))
-
 	var user []*model.User
-	if err := db.Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
+	if err := r.Repository.getDb(ctx).Scopes(r.FilterUser(request)).Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&user).Error; err != nil {
 		return nil, 0, err
 	}
 
 	var total int64 = 0
-	if err := db.Model(&model.User{}).Count(&total).Error; err != nil {
+	if err := r.Repository.getDb(ctx).Scopes(r.FilterUser(request)).Model(&model.User{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
