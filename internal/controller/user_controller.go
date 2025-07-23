@@ -70,3 +70,78 @@ func (c *UserController) List(ctx *fiber.Ctx) error {
 			TotalPage: totalPage,
 		}})
 }
+
+func (c *UserController) Create(ctx *fiber.Ctx) error {
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "UserController.Create")
+	defer span.End()
+
+	logger := c.logger.WithContext(spanCtx)
+
+	// Parse request
+	req := new(dto.CreateUserRequest)
+	if err := ctx.BodyParser(req); err != nil {
+		logger.WithError(err).Error("failed to parse request body")
+		return errcode.ErrBadRequest
+	}
+
+	// Create user
+	user, err := c.userService.CreateUser(spanCtx, req)
+	if err != nil {
+		logger.WithError(err).Error("failed to create user")
+		return err
+	}
+
+	return ctx.JSON(dto.WebResponse[*dto.UserResponse]{Data: user})
+}
+
+func (c *UserController) Update(ctx *fiber.Ctx) error {
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "UserController.Update")
+	defer span.End()
+
+	logger := c.logger.WithContext(spanCtx)
+
+	// Get UUID from path
+	uuid := ctx.Params("uuid")
+	if uuid == "" {
+		return errcode.ErrBadRequest
+	}
+
+	// Parse request
+	req := new(dto.UpdateUserRequest)
+	if err := ctx.BodyParser(req); err != nil {
+		logger.WithError(err).Error("failed to parse request body")
+		return errcode.ErrBadRequest
+	}
+
+	// Update user
+	user, err := c.userService.UpdateUser(spanCtx, uuid, req)
+	if err != nil {
+		logger.WithError(err).Error("failed to update user")
+		return err
+	}
+
+	return ctx.JSON(dto.WebResponse[*dto.UserResponse]{
+		Data: user,
+	})
+}
+
+func (c *UserController) Delete(ctx *fiber.Ctx) error {
+	spanCtx, span := c.tracer.Start(ctx.UserContext(), "UserController.Delete")
+	defer span.End()
+
+	logger := c.logger.WithContext(spanCtx)
+
+	// Get UUID from path
+	uuid := ctx.Params("uuid")
+	if uuid == "" {
+		return errcode.ErrBadRequest
+	}
+
+	// Delete user
+	if err := c.userService.DeleteUser(spanCtx, uuid); err != nil {
+		logger.WithError(err).Error("failed to delete user")
+		return err
+	}
+
+	return ctx.SendStatus(fiber.StatusNoContent)
+}

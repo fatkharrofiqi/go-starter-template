@@ -48,7 +48,8 @@ var (
 	ErrRefreshTokenGeneration = errors.New("could not generate refresh token")
 
 	// Common Errors
-	ErrBadRequest = errors.New("bad request")
+	ErrBadRequest          = errors.New("bad request")
+	ErrInternalServerError = errors.New("internal server error")
 )
 
 // errorStatusMap maps application errors to their respective HTTP status codes
@@ -82,6 +83,7 @@ var errorStatusMap = map[error]int{
 	ErrRedisSet:               fiber.StatusInternalServerError,
 	ErrRedisGet:               fiber.StatusInternalServerError,
 	ErrUnexpectedSignMethod:   fiber.StatusInternalServerError,
+	ErrInternalServerError:    fiber.StatusInternalServerError,
 
 	// 404 Not Found Errors
 	ErrUserNotFound:     fiber.StatusNotFound,

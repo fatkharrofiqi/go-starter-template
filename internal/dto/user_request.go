@@ -15,3 +15,16 @@ func (r *SearchUserRequest) SetDefault() {
 		r.Size = 10
 	}
 }
+
+type CreateUserRequest struct {
+	Name     string   `json:"name" validate:"required,min=3,max=100"`
+	Email    string   `json:"email" validate:"required,email,max=200"`
+	Password string   `json:"password" validate:"required,min=6,max=100"`
+	Roles    []string `json:"roles,omitempty" validate:"omitempty"`
+}
+
+type UpdateUserRequest struct {
+	Name  string   `json:"name" validate:"required,min=3,max=100"`
+	Email string   `json:"email" validate:"required,email,max=200"`
+	Roles []string `json:"roles,omitempty" validate:"omitempty"`
+}

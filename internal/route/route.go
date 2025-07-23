@@ -46,5 +46,8 @@ func (r *RouteConfig) RegisterUserRoutes(userController *controller.UserControll
 		user.Use(authMiddleware)
 		user.Get("/", userController.List)
 		user.Get("/me", userController.Me)
+		user.Post("/", userController.Create)
+		user.Put("/:uuid", userController.Update)
+		user.Delete("/:uuid", userController.Delete)
 	}
 }
