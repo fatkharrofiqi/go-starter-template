@@ -296,3 +296,31 @@ This project is licensed under the **MIT License**.
 ---
 
 🚀 **Happy coding!**
+
+## TODO / Roadmap
+
+- [x] Fix JWT refresh secret usage: make `GetRefreshSecret()` return `jwt.refresh_secret` from config.
+- [ ] Add unit tests for controllers (`auth_controller`, `user_controller`) and middleware (`auth_middleware`, `csrf_middleware`).
+- [ ] Add integration tests using Fiber’s test utilities for auth flow (login, refresh, logout) and protected routes.
+- [ ] Document CSRF usage and add client example for `GenerateCsrfToken` + protected POST flow.
+- [ ] Implement optional refresh token rotation toggle in config and ensure old refresh tokens are blacklisted consistently.
+- [x] Add rate limiting middleware (per IP) to `/api/auth/login`.
+- [ ] Extend rate limiting to sensitive endpoints and consider per-user throttling.
+- [ ] Introduce account lockout/backoff strategy on repeated failed logins.
+- [ ] Add password reset flow (request, token, reset) and email placeholders.
+- [ ] Extend user module with list sorting options (name, email, created_at) and validate bounds.
+- [ ] Add OpenAPI/Swagger spec and publish under `/docs` for API discovery.
+- [ ] Create Dockerfile and `docker-compose.yml` (Postgres + Redis) with `make compose-up` target.
+- [ ] Set up CI (GitHub Actions) for `go test`, `golangci-lint`, security checks, and build.
+- [ ] Add static analysis (`golangci-lint`) and formatting checks to Makefile.
+- [ ] Strengthen error handling: unify `errcode` mapping, differentiate JWT invalid vs expired, and improve messages.
+- [ ] Improve logging: attach request ID/correlation ID, include user UUID on protected routes, and standardize fields.
+- [ ] Harden configuration: environment variable overrides, validation for critical fields (DB DSN, secrets).
+- [ ] Monitoring/OTEL: make OTLP endpoint configurable per environment, add timeouts/retry, and document local Jaeger setup.
+- [ ] Redis caching strategy: define keys, TTLs, and invalidation for user reads/updates; add tests.
+- [ ] Database: add useful indexes (e.g., `users(email)`, `roles(name)`, `permissions(name)`), and constraints.
+- [ ] Seeder: make operations idempotent (upsert) and parameterize sample data; add `make seed` docs.
+- [ ] Security: configurable bcrypt cost, optional pepper, and audit logging for permission changes.
+- [ ] Performance: review N+1 queries, ensure necessary `Preload` usage, and expand K6 tests/thresholds.
+- [ ] Add pagination metadata examples in API docs and verify total pages logic in tests.
+- [ ] Provide example client snippets (JS/TS) for login, token refresh, and authorized requests.

@@ -84,11 +84,11 @@ func NewConfig() *Config {
 }
 
 func (c *Config) GetAccessSecret() string {
-	return c.JWT.Secret
+    return c.JWT.Secret
 }
 
 func (c *Config) GetRefreshSecret() string {
-	return c.JWT.Secret
+    return c.JWT.RefreshSecret
 }
 
 func (c *Config) GetCsrfSecret() string {
