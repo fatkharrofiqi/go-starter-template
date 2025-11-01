@@ -15,19 +15,17 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 type UserService struct {
-	db             *gorm.DB
 	userRepository *repository.UserRepository
 	redisService   *RedisService
 	log            *logrus.Logger
 	tracer         trace.Tracer
 }
 
-func NewUserService(db *gorm.DB, userRepository *repository.UserRepository, redisService *RedisService, logrus *logrus.Logger) *UserService {
-	return &UserService{db, userRepository, redisService, logrus, otel.Tracer("UserService")}
+func NewUserService(userRepository *repository.UserRepository, redisService *RedisService, logrus *logrus.Logger) *UserService {
+	return &UserService{userRepository, redisService, logrus, otel.Tracer("UserService")}
 }
 
 // GetUser retrieves a user by UUID.
@@ -45,7 +43,7 @@ func (s *UserService) GetUser(ctx context.Context, uuid string) (result string, 
 	}
 
 	user := new(model.User)
-	if err := s.userRepository.FindByUUID(spanCtx, user, uuid); err != nil {
+	if err = s.userRepository.FindByUUID(spanCtx, user, uuid); err != nil {
 		logger.WithError(err).Warn("failed to find user by UUID")
 		return "", errcode.ErrUserNotFound
 	}
@@ -88,19 +86,14 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 	defer span.End()
 
 	logger := s.log.WithContext(spanCtx)
-	tx := s.db.Begin()
-	txCtx := context.WithValue(spanCtx, repository.TxKey, tx)
-
 	// Check if email already exists
-	count, err := s.userRepository.CountByEmail(txCtx, request.Email)
+	count, err := s.userRepository.CountByEmail(spanCtx, request.Email)
 	if err != nil {
-		tx.Rollback()
 		logger.WithError(err).Error("Failed to check email existence")
 		return nil, errcode.ErrInternalServerError
 	}
 
 	if count > 0 {
-		tx.Rollback()
 		logger.Warn("Attempt to add an already existing email")
 		return nil, errcode.ErrUserAlreadyExists
 	}
@@ -109,7 +102,6 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	hashSpan.End()
 	if err != nil {
-		tx.Rollback()
 		logger.WithError(err).Error("Failed to hash password")
 		return nil, errcode.ErrPasswordEncryption
 	}
@@ -123,15 +115,8 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 	}
 
 	// Create user
-	if err := s.userRepository.Create(txCtx, user); err != nil {
-		tx.Rollback()
+	if err := s.userRepository.Create(spanCtx, user); err != nil {
 		logger.WithError(err).Error("Failed to create user")
-		return nil, errcode.ErrInternalServerError
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		logger.WithError(err).Error("Failed to commit transaction")
 		return nil, errcode.ErrInternalServerError
 	}
 
@@ -146,20 +131,16 @@ func (s *UserService) UpdateUser(ctx context.Context, uuid string, request *dto.
 	defer span.End()
 
 	logger := s.log.WithContext(spanCtx)
-	// Begin transaction
-	tx := s.db.Begin()
-	txCtx := context.WithValue(spanCtx, repository.TxKey, tx)
-
 	// Find user
 	user := new(model.User)
-	if err := s.userRepository.FindByUUID(txCtx, user, uuid); err != nil {
+	if err := s.userRepository.FindByUUID(spanCtx, user, uuid); err != nil {
 		logger.WithError(err).Warn("Failed to find user by UUID")
 		return nil, errcode.ErrUserNotFound
 	}
 
 	// Check if email already exists (if email is changed)
 	if user.Email != request.Email {
-		count, err := s.userRepository.CountByEmail(txCtx, request.Email)
+		count, err := s.userRepository.CountByEmail(spanCtx, request.Email)
 		if err != nil {
 			logger.WithError(err).Error("Failed to check email existence")
 			return nil, errcode.ErrInternalServerError
@@ -175,15 +156,8 @@ func (s *UserService) UpdateUser(ctx context.Context, uuid string, request *dto.
 	user.Email = request.Email
 
 	// Update user
-	if err := s.userRepository.Update(txCtx, user); err != nil {
-		tx.Rollback()
+	if err := s.userRepository.Update(spanCtx, user); err != nil {
 		logger.WithError(err).Error("Failed to update user")
-		return nil, errcode.ErrInternalServerError
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		logger.WithError(err).Error("Failed to commit transaction")
 		return nil, errcode.ErrInternalServerError
 	}
 
@@ -198,27 +172,16 @@ func (s *UserService) DeleteUser(ctx context.Context, uuid string) error {
 	defer span.End()
 
 	logger := s.log.WithContext(spanCtx)
-	// Begin transaction
-	tx := s.db.Begin()
-	txCtx := context.WithValue(spanCtx, repository.TxKey, tx)
-
 	// Find user
 	user := new(model.User)
-	if err := s.userRepository.FindByUUID(txCtx, user, uuid); err != nil {
+	if err := s.userRepository.FindByUUID(spanCtx, user, uuid); err != nil {
 		logger.WithError(err).Warn("Failed to find user by UUID")
 		return errcode.ErrUserNotFound
 	}
 
 	// Delete user
-	if err := s.userRepository.Delete(txCtx, user); err != nil {
-		tx.Rollback()
+	if err := s.userRepository.Delete(spanCtx, user); err != nil {
 		logger.WithError(err).Error("Failed to delete user")
-		return errcode.ErrInternalServerError
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		logger.WithError(err).Error("Failed to commit transaction")
 		return errcode.ErrInternalServerError
 	}
 

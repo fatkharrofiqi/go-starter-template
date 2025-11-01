@@ -1,6 +1,6 @@
 # Go Starter Backend Template
 
-This is a **Go starter template** for building a backend service using **Gin** for HTTP routing, **JWT authentication**, **GORM with PostgreSQL**, and other essential tools like **Viper for configuration**, **Logrus for logging**, and **Migrate for database migrations**. It follows a clean architecture structure to keep the project modular and scalable.
+This is a **Go starter template** for building a backend service using **Fiber** for HTTP routing, **JWT authentication**, **GORM with PostgreSQL**, and other essential tools like **Viper for configuration**, **Logrus for logging**, and **Migrate for database migrations**. It follows a clean architecture structure to keep the project modular and scalable.
 
 ---
 
@@ -16,10 +16,10 @@ This is a **Go starter template** for building a backend service using **Gin** f
 - ✅ **HTTP Routing** using **Fiber**
 - ✅ **Middleware Support** for authentication
 - ✅ **Monitoring** with **Jaeger** and **OpenTelemetry** for distributed tracing
+- ✅ **Unit of Work Pattern** for transaction management across repositories
 - ✅ **Makefile** for easy project commands
-- ✅ **Middleware Support** for authentication
 - ✅ **YQ** for reading YAML configuration files
-- ✅ **Unit testing** using **Testify** 
+- ✅ **Unit testing** using **Testify** with **sqlmock** for database mocking
 - ✅ **Performance testing** using **K6**
 - ✅ **Redis Integration** for caching
 
@@ -76,6 +76,19 @@ This application implements a secure JWT-based authentication system with cookie
 
 ---
 
+## Unit of Work Pattern
+
+This application implements the **Unit of Work (UoW) pattern** to manage database transactions across multiple repositories, ensuring data consistency and ACID compliance.
+
+### 🔄 How It Works
+
+The Unit of Work pattern provides a single transaction boundary that can span multiple repository operations:
+
+1. **Transaction Management**: The `UnitOfWork` struct manages `sql.Tx` lifecycle (begin, commit, rollback)
+2. **Context Propagation**: Transaction context is passed through `context.Context` using `TxKey`
+3. **Repository Integration**: Repositories automatically detect and use the transaction when available
+4. **Service Layer Control**: Business logic in services controls transaction boundaries
+
 ## Project Structure
 
 ```
@@ -116,6 +129,7 @@ This application implements a secure JWT-based authentication system with cookie
  ┃ ┃ ┗ 📜 user.go
  ┃ ┣ 📂 repository     # Database repositories
  ┃ ┃ ┣ 📜 repository.go
+ ┃ ┃ ┣ 📜 uow.go       # Unit of Work implementation
  ┃ ┃ ┗ 📜 user_repository.go
  ┃ ┣ 📂 route         # Routing setup
  ┃ ┃ ┗ 📜 route.go
@@ -300,6 +314,7 @@ This project is licensed under the **MIT License**.
 ## TODO / Roadmap
 
 - [x] Fix JWT refresh secret usage: make `GetRefreshSecret()` return `jwt.refresh_secret` from config.
+- [x] Implement Unit of Work pattern for transaction management across repositories with comprehensive testing.
 - [ ] Add unit tests for controllers (`auth_controller`, `user_controller`) and middleware (`auth_middleware`, `csrf_middleware`).
 - [ ] Add integration tests using Fiber’s test utilities for auth flow (login, refresh, logout) and protected routes.
 - [ ] Document CSRF usage and add client example for `GenerateCsrfToken` + protected POST flow.

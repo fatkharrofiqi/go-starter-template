@@ -1,6 +1,7 @@
 package app
 
 import (
+	"database/sql"
 	"fmt"
 	"go-starter-template/internal/config/env"
 	"go-starter-template/internal/config/validation"
@@ -14,11 +15,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 type BootstrapConfig struct {
-	db         *gorm.DB
+	db         *sql.DB
 	web        *fiber.App
 	log        *logrus.Logger
 	config     *env.Config
@@ -26,21 +26,22 @@ type BootstrapConfig struct {
 	redis      *redis.Client
 }
 
-func NewApp(log *logrus.Logger, config *env.Config, db *gorm.DB, web *fiber.App, validation *validation.Validation, redis *redis.Client) *BootstrapConfig {
+func NewApp(log *logrus.Logger, config *env.Config, db *sql.DB, web *fiber.App, validation *validation.Validation, redis *redis.Client) *BootstrapConfig {
 	return &BootstrapConfig{db, web, log, config, validation, redis}
 }
 
 func (app *BootstrapConfig) Bootstrap() {
-	// setup repositories
-	userRepository := repository.NewUserRepository(app.db)
-	blacklistRepository := repository.NewRedisTokenBlacklist(app.redis)
+    // setup repositories
+    userRepository := repository.NewUserRepository(app.db)
+    blacklistRepository := repository.NewRedisTokenBlacklist(app.redis)
+    uow := repository.NewUnitOfWork(app.db)
 
 	// setup use service
 	jwtService := service.NewJwtService(app.log, app.config)
 	blacklistService := service.NewBlacklistService(app.log, jwtService, blacklistRepository)
-	authService := service.NewAuthService(app.db, jwtService, userRepository, blacklistService, app.log)
+    authService := service.NewAuthService(jwtService, userRepository, blacklistService, app.log, uow)
 	redisService := service.NewRedisService(app.redis, app.log)
-	userService := service.NewUserService(app.db, userRepository, redisService, app.log)
+	userService := service.NewUserService(userRepository, redisService, app.log)
 
 	// setup controller
 	welcomeController := controller.NewWelcomeController()

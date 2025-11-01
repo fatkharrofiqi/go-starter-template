@@ -66,7 +66,7 @@ func (b *BlacklistService) Add(ctx context.Context, token string, tokenType cons
 		logger.WithError(err).Warn("could not parse token claims; fallback to default TTL")
 		// Add fallback TTL to Redis
 		_, fallbackSpan := b.tracer.Start(parseCtx, "AddFallbackTTLToRedis")
-		err := b.blacklistRepository.Add(tokenHash, tokenType, 24*time.Hour)
+		err = b.blacklistRepository.Add(tokenHash, tokenType, 24*time.Hour)
 		fallbackSpan.End()
 		if err != nil {
 			logger.WithError(err).Error("failed to store fallback token in Redis")

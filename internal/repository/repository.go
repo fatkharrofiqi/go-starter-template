@@ -2,43 +2,29 @@ package repository
 
 import (
 	"context"
-
-	"gorm.io/gorm"
+	"database/sql"
 )
 
 type contextKey string
 
 var TxKey contextKey = "tx"
 
-type Repository[T any] struct {
-	db *gorm.DB
+// SQLExecutor is implemented by both *sql.DB and *sql.Tx
+type SQLExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-func (r *Repository[T]) Create(ctx context.Context, entity *T) error {
-	return r.getDb(ctx).Create(entity).Error
+type Repository struct {
+	db *sql.DB
 }
 
-func (r *Repository[T]) Update(ctx context.Context, entity *T) error {
-	return r.getDb(ctx).Save(entity).Error
-}
-
-func (r *Repository[T]) Delete(ctx context.Context, entity *T) error {
-	return r.getDb(ctx).Delete(entity).Error
-}
-
-func (r *Repository[T]) CountById(ctx context.Context, id any) (int64, error) {
-	var total int64
-	err := r.getDb(ctx).Model(new(T)).Where("id = ?", id).Count(&total).Error
-	return total, err
-}
-
-func (r *Repository[T]) FindById(ctx context.Context, entity *T, id any) error {
-	return r.getDb(ctx).Where("id = ?", id).Take(entity).Error
-}
-
-func (r *Repository[T]) getDb(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value(TxKey).(*gorm.DB); ok && tx != nil {
-		return tx.WithContext(ctx)
+// getExecutor returns an executor that is either the active *sql.Tx (if present in ctx)
+// or the base *sql.DB. Use this when calling ExecContext/QueryContext methods.
+func (r *Repository) getExecutor(ctx context.Context) SQLExecutor {
+	if tx, ok := ctx.Value(TxKey).(*sql.Tx); ok && tx != nil {
+		return tx
 	}
-	return r.db.WithContext(ctx)
+	return r.db
 }
