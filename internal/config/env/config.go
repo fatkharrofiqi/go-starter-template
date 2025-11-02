@@ -1,10 +1,10 @@
 package env
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/spf13/viper"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -20,7 +20,6 @@ type Config struct {
 	} `mapstructure:"web"`
 	JWT struct {
 		Secret                 string        `mapstructure:"secret"`
-		CsrfSecret             string        `mapstructure:"csrf_secret"`
 		RefreshSecret          string        `mapstructure:"refresh_secret"`
 		CsrfTokenExpiration    time.Duration `mapstructure:"csrf_token_expiration"`
 		AccessTokenExpiration  time.Duration `mapstructure:"access_token_expiration"`
@@ -41,17 +40,17 @@ type Config struct {
 	Log struct {
 		Level int `mapstructure:"level"`
 	} `mapstructure:"log"`
-    Database struct {
-        DSN  string `mapstructure:"dsn"`
-        Pool struct {
-            Idle     int `mapstructure:"idle"`
-            Max      int `mapstructure:"max"`
-            Lifetime int `mapstructure:"lifetime"`
-        } `mapstructure:"pool"`
-        Log struct {
-            Level int `mapstructure:"level"`
-        } `mapstructure:"log"`
-    } `mapstructure:"database"`
+	Database struct {
+		DSN  string `mapstructure:"dsn"`
+		Pool struct {
+			Idle     int `mapstructure:"idle"`
+			Max      int `mapstructure:"max"`
+			Lifetime int `mapstructure:"lifetime"`
+		} `mapstructure:"pool"`
+		Log struct {
+			Level int `mapstructure:"level"`
+		} `mapstructure:"log"`
+	} `mapstructure:"database"`
 	Monitoring struct {
 		Otel struct {
 			Host string `mapstructure:"host"`
@@ -83,15 +82,11 @@ func NewConfig() *Config {
 }
 
 func (c *Config) GetAccessSecret() string {
-    return c.JWT.Secret
+	return c.JWT.Secret
 }
 
 func (c *Config) GetRefreshSecret() string {
-    return c.JWT.RefreshSecret
-}
-
-func (c *Config) GetCsrfSecret() string {
-	return c.JWT.CsrfSecret
+	return c.JWT.RefreshSecret
 }
 
 func (c *Config) GetAccessTokenExpiration() time.Duration {
