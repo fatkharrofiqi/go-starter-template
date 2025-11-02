@@ -127,22 +127,24 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Logout(ctx *fiber.Ctx) error {
-	spanCtx, span := c.tracer.Start(ctx.UserContext(), "AuthController.Logout")
-	defer span.End()
+    spanCtx, span := c.tracer.Start(ctx.UserContext(), "AuthController.Logout")
+    defer span.End()
 
-	logger := c.logger.WithContext(spanCtx)
+    logger := c.logger.WithContext(spanCtx)
 
-	authHeader := ctx.Get("Authorization")
-	if len(authHeader) < len(bearerPrefix) || !strings.HasPrefix(authHeader, bearerPrefix) {
-		logger.Warn("Invalid or missing Authorization header")
-		return errcode.ErrUnauthorized
-	}
+    authHeader := strings.TrimSpace(ctx.Get("Authorization"))
+    // Check for Bearer scheme ignoring trailing space
+    if !strings.HasPrefix(authHeader, "Bearer") {
+        logger.Warn("Invalid or missing Authorization header")
+        return errcode.ErrUnauthorized
+    }
 
-	accessToken := authHeader[len(bearerPrefix):]
-	if accessToken == "" {
-		logger.Warn("Access token is empty after Bearer prefix")
-		return errcode.ErrUnauthorized
-	}
+    // Extract token after Bearer and trim any whitespace
+    accessToken := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer"))
+    if accessToken == "" {
+        logger.Warn("Access token is empty after Bearer prefix")
+        return errcode.ErrUnauthorized
+    }
 	_, readCookeSpan := c.tracer.Start(spanCtx, "ReadCookie")
 	refreshToken := ctx.Cookies(refreshTokenCookieName)
 	if refreshToken == "" {

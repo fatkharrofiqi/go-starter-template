@@ -1,138 +1,107 @@
 package seeder
 
 import (
-	"go-starter-template/internal/model"
-	"log"
+    "database/sql"
+    "log"
+    "time"
 
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
+    "github.com/google/uuid"
+    "golang.org/x/crypto/bcrypt"
+    "go-starter-template/internal/model"
 )
 
-func Seed(db *gorm.DB) {
-	// Delete existing records
-	if err := db.Exec("DELETE FROM user_roles").Error; err != nil {
-		log.Fatalf("Failed to delete user_roles: %v", err)
-	}
-	if err := db.Exec("DELETE FROM role_permissions").Error; err != nil {
-		log.Fatalf("Failed to delete role_permissions: %v", err)
-	}
-	if err := db.Exec("DELETE FROM user_permissions").Error; err != nil {
-		log.Fatalf("Failed to delete user_permissions: %v", err)
-	}
-	if err := db.Exec("DELETE FROM users").Error; err != nil {
-		log.Fatalf("Failed to delete users: %v", err)
-	}
-	if err := db.Exec("DELETE FROM roles").Error; err != nil {
-		log.Fatalf("Failed to delete roles: %v", err)
-	}
-	if err := db.Exec("DELETE FROM permissions").Error; err != nil {
-		log.Fatalf("Failed to delete permissions: %v", err)
-	}
+func Seed(db *sql.DB) {
+    // Cleanup existing records in dependency order
+    for _, table := range []string{"user_roles", "role_permissions", "user_permissions", "users", "roles", "permissions"} {
+        if _, err := db.Exec("DELETE FROM " + table); err != nil {
+            log.Fatalf("Failed to delete from %s: %v", table, err)
+        }
+    }
 
-	roles := []model.Role{
-		{UUID: uuid.NewString(), Name: "admin"},
-		{UUID: uuid.NewString(), Name: "user"},
-	}
+    // Prepare base data using model structs
+    adminRole := model.Role{UUID: uuid.NewString(), Name: "admin"}
+    userRole := model.Role{UUID: uuid.NewString(), Name: "user"}
+    roles := []model.Role{adminRole, userRole}
 
-	crudUser := []model.Permission{
-		{UUID: uuid.NewString(), Name: "read-user"},
-		{UUID: uuid.NewString(), Name: "write-user"},
-		{UUID: uuid.NewString(), Name: "delete-user"},
-		{UUID: uuid.NewString(), Name: "update-user"},
-	}
+    // Insert roles
+    for _, r := range roles {
+        if _, err := db.Exec(`INSERT INTO roles (uuid, name) VALUES ($1, $2)`, r.UUID, r.Name); err != nil {
+            log.Fatalf("Failed to insert role %s: %v", r.Name, err)
+        }
+    }
 
-	crudPermissions := []model.Permission{
-		{UUID: uuid.NewString(), Name: "read-permission"},
-		{UUID: uuid.NewString(), Name: "write-permission"},
-		{UUID: uuid.NewString(), Name: "delete-permission"},
-		{UUID: uuid.NewString(), Name: "update-permission"},
-	}
+    // Permissions
+    newPerm := func(name string) model.Permission { return model.Permission{UUID: uuid.NewString(), Name: name} }
+    crudUser := []model.Permission{
+        newPerm("read-user"),
+        newPerm("write-user"),
+        newPerm("delete-user"),
+        newPerm("update-user"),
+    }
+    crudPermissions := []model.Permission{
+        newPerm("read-permission"),
+        newPerm("write-permission"),
+        newPerm("delete-permission"),
+        newPerm("update-permission"),
+    }
+    crudRole := []model.Permission{
+        newPerm("read-role"),
+        newPerm("write-role"),
+        newPerm("delete-role"),
+        newPerm("update-role"),
+    }
+    otherPermission := newPerm("read-other")
 
-	crudRole := []model.Permission{
-		{UUID: uuid.NewString(), Name: "read-role"},
-		{UUID: uuid.NewString(), Name: "write-role"},
-		{UUID: uuid.NewString(), Name: "delete-role"},
-		{UUID: uuid.NewString(), Name: "update-role"},
-	}
+    // Insert permissions
+    insertPerm := func(p model.Permission) {
+        if _, err := db.Exec(`INSERT INTO permissions (uuid, name) VALUES ($1, $2)`, p.UUID, p.Name); err != nil {
+            log.Fatalf("Failed to insert permission %s: %v", p.Name, err)
+        }
+    }
+    for _, p := range crudUser { insertPerm(p) }
+    for _, p := range crudPermissions { insertPerm(p) }
+    for _, p := range crudRole { insertPerm(p) }
+    insertPerm(otherPermission)
 
-	otherPermission := model.Permission{
-		UUID: uuid.NewString(), Name: "read-other",
-	}
+    // Create a test user
+    hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+    now := time.Now()
+    user := model.User{
+        UUID:      uuid.NewString(),
+        Name:      "Test",
+        Email:     "test@test.com",
+        Password:  string(hashedPassword),
+        CreatedAt: now,
+        UpdatedAt: now,
+    }
+    if _, err := db.Exec(`INSERT INTO users (uuid, name, email, password, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        user.UUID, user.Name, user.Email, user.Password, user.CreatedAt, user.UpdatedAt); err != nil {
+        log.Fatalf("Failed to insert test user: %v", err)
+    }
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+    // Assign permissions to admin role
+    for _, p := range append(crudPermissions, crudRole...) {
+        if _, err := db.Exec(`INSERT INTO role_permissions (role_uuid, permission_uuid) VALUES ($1, $2)`, adminRole.UUID, p.UUID); err != nil {
+            log.Fatalf("Failed to assign permission %s to admin role: %v", p.Name, err)
+        }
+    }
 
-	users := []model.User{
-		{UUID: uuid.NewString(), Name: "Test", Email: "test@test.com", Password: string(hashedPassword)},
-	}
+    // Assign permissions to user role
+    for _, p := range crudUser {
+        if _, err := db.Exec(`INSERT INTO role_permissions (role_uuid, permission_uuid) VALUES ($1, $2)`, userRole.UUID, p.UUID); err != nil {
+            log.Fatalf("Failed to assign permission %s to user role: %v", p.Name, err)
+        }
+    }
 
-	// Seed roles
-	for _, role := range roles {
-		if err := db.Create(&role).Error; err != nil {
-			log.Fatalf("Failed to seed roles: %v", err)
-		}
-	}
+    // Assign roles to user
+    for _, r := range []model.Role{adminRole, userRole} {
+        if _, err := db.Exec(`INSERT INTO user_roles (user_uuid, role_uuid) VALUES ($1, $2)`, user.UUID, r.UUID); err != nil {
+            log.Fatalf("Failed to assign role %s to user: %v", r.Name, err)
+        }
+    }
 
-	// Seed user permissions
-	for _, permission := range crudUser {
-		if err := db.Create(&permission).Error; err != nil {
-			log.Fatalf("Failed to seed permissions: %v", err)
-		}
-	}
-
-	// Seed crud permissions
-	for _, permission := range crudPermissions {
-		if err := db.Create(&permission).Error; err != nil {
-			log.Fatalf("Failed to seed permissions: %v", err)
-		}
-	}
-
-	// Seed role permissions
-	for _, permission := range crudRole {
-		if err := db.Create(&permission).Error; err != nil {
-			log.Fatalf("Failed to seed permissions: %v", err)
-		}
-	}
-
-	if err := db.Create(&otherPermission).Error; err != nil {
-		log.Fatalf("Failed to seed permissions: %v", err)
-	}
-
-	// Seed users
-	for _, user := range users {
-		if err := db.Create(&user).Error; err != nil {
-			log.Fatalf("Failed to seed users: %v", err)
-		}
-	}
-
-	// Assign permissions to roles
-	adminRole := roles[0]
-	if err := db.Model(&adminRole).Association("Permissions").Append(&crudPermissions); err != nil {
-		log.Fatalf("Failed to assign permissions to admin role: %v", err)
-	}
-
-	if err := db.Model(&adminRole).Association("Permissions").Append(&crudRole); err != nil {
-		log.Fatalf("Failed to assign permissions to admin role: %v", err)
-	}
-
-	userRole := roles[1]
-	if err := db.Model(&userRole).Association("Permissions").Append(&crudUser); err != nil {
-		log.Fatalf("Failed to assign permissions to admin role: %v", err)
-	}
-
-	// Assign roles to users
-	testUser := users[0]
-	if err := db.Model(&testUser).Association("Roles").Append(&adminRole); err != nil {
-		log.Fatalf("Failed to assign admin role to test user: %v", err)
-	}
-
-	if err := db.Model(&testUser).Association("Roles").Append(&userRole); err != nil {
-		log.Fatalf("Failed to assign admin role to test user: %v", err)
-	}
-
-	if err := db.Model(&testUser).Association("Permissions").Append([]model.Permission{
-		otherPermission,
-	}); err != nil {
-		log.Fatalf("Failed to assign update permission to test user: %v", err)
-	}
+    // Assign extra permission to user
+    if _, err := db.Exec(`INSERT INTO user_permissions (user_uuid, permission_uuid) VALUES ($1, $2)`, user.UUID, otherPermission.UUID); err != nil {
+        log.Fatalf("Failed to assign other permission to user: %v", err)
+    }
 }

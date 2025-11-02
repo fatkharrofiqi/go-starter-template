@@ -1,6 +1,6 @@
 # Go Starter Backend Template
 
-This is a **Go starter template** for building a backend service using **Fiber** for HTTP routing, **JWT authentication**, **GORM with PostgreSQL**, and other essential tools like **Viper for configuration**, **Logrus for logging**, and **Migrate for database migrations**. It follows a clean architecture structure to keep the project modular and scalable.
+This is a **Go starter template** for building a backend service using **Fiber** for HTTP routing, **JWT authentication**, and PostgreSQL via **database/sql** (pgx driver). It includes essential tools like **Viper for configuration**, **Logrus for logging**, and **Migrate for database migrations**. It follows a clean architecture structure to keep the project modular and scalable.
 
 ---
 
@@ -11,7 +11,7 @@ This is a **Go starter template** for building a backend service using **Fiber**
 - ✅ **Input Validation** using **Validator**
 - ✅ **Configuration Management** with **Viper**
 - ✅ **Structured Logging** with **Logrus**
-- ✅ **Database ORM** using **GORM (PostgreSQL)**
+- ✅ **Database access** using **database/sql** with **pgx** (PostgreSQL)
 - ✅ **Database Migrations** using **Migrate**
 - ✅ **HTTP Routing** using **Fiber**
 - ✅ **Middleware Support** for authentication
@@ -106,14 +106,12 @@ The Unit of Work pattern provides a single transaction boundary that can span mu
  ┣ 📂 internal           # Internal business logic
  ┃ ┣ 📂 config           # Configuration files
  ┃ ┃ ┣ 📂 env
- ┃ ┃ ┣ 📂 monitoring
+ ┃ ┃ ┣ 📂 monitor
  ┃ ┃ ┣ 📂 validation
- ┃ ┃ ┣ 📜 app.go
- ┃ ┃ ┣ 📜 fiber.go
- ┃ ┃ ┣ 📜 gorm.go
- ┃ ┃ ┣ 📜 logrus.go
- ┃ ┃ ┣ 📜 migration.go
- ┃ ┃ ┗ 📜 viper.go
+ ┃ ┃ ┣ 📂 database
+ ┃ ┃ ┣ 📂 logger
+ ┃ ┃ ┣ 📂 redis
+ ┃ ┃ ┗ 📂 web
  ┃ ┣ 📂 controller       # HTTP controllers
  ┃ ┃ ┣ 📜 auth_controller.go
  ┃ ┃ ┣ 📜 user_controller.go
@@ -137,11 +135,10 @@ The Unit of Work pattern provides a single transaction boundary that can span mu
  ┃ ┃ ┗ 📜 auth_service.go
  ┃ ┣ 📂 utils         # Utility packages
  ┃ ┃ ┗ 📂 errcode
- ┣ 📂 test            # Testing
- ┃ ┣ 📂 performance   # K6 performance tests
- ┃ ┃ ┣ 📜 get-user.js
- ┃ 📜 config.example.yml
- ┃ 📜 config.yml
+ ┣ 📂 perf            # Performance tests (k6)
+ ┃ ┣ 📂 load          # Normal traffic scenarios
+ ┃ ┣ 📂 stress        # Beyond-capacity scenarios
+ ┃ ┗ 📜 README.md     # Perf documentation and usage
  ┣ 📜 go.mod         # Go module dependencies
  ┣ 📜 go.sum         # Go module checksum
  ┣ 📜 Makefile       # Makefile for running tasks
@@ -276,11 +273,32 @@ go test ./...
 
 ### Performance Testing
 
-Run performance tests using K6:
+Run performance tests using K6. Scripts live under `perf/`:
 
 ```sh
-# Run specific performance test
-k6 run test/performance/get-user.js
+# List users (load)
+k6 run perf/load/users.list.k6.js
+
+# Get user (load)
+k6 run perf/load/users.get.k6.js
+
+# Get user with CSRF (stress)
+k6 run perf/stress/users.get_with_csrf.k6.js
+```
+
+Pass parameters via environment variables (k6 `__ENV`):
+
+```sh
+# Base URL
+k6 run -e BASE_URL=http://localhost:8080 perf/load/users.list.k6.js
+
+# With auth token
+k6 run -e BASE_URL=http://localhost:8080 -e AUTH_TOKEN=Bearer_xxx \
+  perf/load/users.get.k6.js
+
+# With auth and CSRF token
+k6 run -e BASE_URL=http://localhost:8080 -e AUTH_TOKEN=Bearer_xxx -e CSRF_TOKEN=abc123 \
+  perf/stress/users.get_with_csrf.k6.js
 ```
 
 ---

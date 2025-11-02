@@ -1,6 +1,6 @@
 package model
 
 type Permission struct {
-	UUID string `gorm:"primaryKey;unique;not null" json:"uuid"`
-	Name string `gorm:"unique;not null" json:"name"`
+    UUID string `json:"uuid"`
+    Name string `json:"name"`
 }

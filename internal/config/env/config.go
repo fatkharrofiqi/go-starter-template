@@ -1,11 +1,10 @@
 package env
 
 import (
-	"fmt"
-	"time"
+    "fmt"
+    "time"
 
-	"github.com/spf13/viper"
-	"gorm.io/gorm/logger"
+    "github.com/spf13/viper"
 )
 
 type Config struct {
@@ -42,17 +41,17 @@ type Config struct {
 	Log struct {
 		Level int `mapstructure:"level"`
 	} `mapstructure:"log"`
-	Database struct {
-		DSN  string `mapstructure:"dsn"`
-		Pool struct {
-			Idle     int `mapstructure:"idle"`
-			Max      int `mapstructure:"max"`
-			Lifetime int `mapstructure:"lifetime"`
-		} `mapstructure:"pool"`
-		Log struct {
-			Level logger.LogLevel `mapstructure:"level"`
-		} `mapstructure:"log"`
-	} `mapstructure:"database"`
+    Database struct {
+        DSN  string `mapstructure:"dsn"`
+        Pool struct {
+            Idle     int `mapstructure:"idle"`
+            Max      int `mapstructure:"max"`
+            Lifetime int `mapstructure:"lifetime"`
+        } `mapstructure:"pool"`
+        Log struct {
+            Level int `mapstructure:"level"`
+        } `mapstructure:"log"`
+    } `mapstructure:"database"`
 	Monitoring struct {
 		Otel struct {
 			Host string `mapstructure:"host"`

@@ -52,22 +52,18 @@ func (v *Validation) Validate(data interface{}) error {
 			return fmt.Errorf("unexpected validation error: %v", err)
 		}
 
-		// Get the type of the struct (dereference the pointer)
-		rt := reflect.TypeOf(data).Elem()
+        // Get the type of the struct (dereference the pointer)
+        rt := reflect.TypeOf(data).Elem()
 
 		// Iterate over each validation error
 		for _, err := range validationErrors {
-			// Get the field by name
-			field, found := rt.FieldByName(err.StructField())
-			if !found {
-				continue // Skip if field not found
-			}
-
-			// Get the JSON tag or fallback to lowercase field name
-			jsonTag := field.Tag.Get("json")
-			if jsonTag == "" {
-				jsonTag = strings.ToLower(err.StructField())
-			}
+            // Determine JSON field name; default to lowercase StructField.
+            jsonTag := strings.ToLower(err.StructField())
+            if field, found := rt.FieldByName(err.StructField()); found {
+                if tag := field.Tag.Get("json"); tag != "" {
+                    jsonTag = tag
+                }
+            }
 
 			message := ""
 			switch err.Tag() {

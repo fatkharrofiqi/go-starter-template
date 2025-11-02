@@ -16,7 +16,7 @@ func main() {
 	web := web.NewFiber(config)
 	log := logger.NewLogger(config)
 	redis := redis.NewRedis(log, config)
-    sqlDB := database.NewSQLDatabase(log, config)
+    sqlDB := database.NewDatabase(log, config)
 	monitoring := monitor.NewMonitoring(log, config)
 	validation := validation.NewValidation()
 	defer monitoring.Shutdown()
