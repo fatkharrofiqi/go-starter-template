@@ -18,14 +18,15 @@ import (
 )
 
 type UserService struct {
-	userRepository *repository.UserRepository
-	redisService   *RedisService
-	log            *logrus.Logger
-	tracer         trace.Tracer
+    userRepository *repository.UserRepository
+    redisService   *RedisService
+    log            *logrus.Logger
+    tracer         trace.Tracer
+    hashPassword   func(password []byte, cost int) ([]byte, error)
 }
 
 func NewUserService(userRepository *repository.UserRepository, redisService *RedisService, logrus *logrus.Logger) *UserService {
-	return &UserService{userRepository, redisService, logrus, otel.Tracer("UserService")}
+    return &UserService{userRepository: userRepository, redisService: redisService, log: logrus, tracer: otel.Tracer("UserService"), hashPassword: bcrypt.GenerateFromPassword}
 }
 
 // GetUser retrieves a user by UUID.
@@ -99,7 +100,7 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 	}
 
 	_, hashSpan := s.tracer.Start(spanCtx, "HashPassword")
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+    hashedPassword, err := s.hashPassword([]byte(request.Password), bcrypt.DefaultCost)
 	hashSpan.End()
 	if err != nil {
 		logger.WithError(err).Error("Failed to hash password")

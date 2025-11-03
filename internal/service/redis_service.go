@@ -12,13 +12,20 @@ import (
 )
 
 type RedisService struct {
-	client *redis.Client
-	logger *logrus.Logger
-	tracer trace.Tracer
+    client redisClient
+    logger *logrus.Logger
+    tracer trace.Tracer
 }
 
-func NewRedisService(client *redis.Client, logger *logrus.Logger) *RedisService {
-	return &RedisService{client, logger, otel.Tracer("RedisService")}
+// redisClient is a minimal interface for redis operations used by RedisService.
+// This allows testing without a real redis server by providing a fake client.
+type redisClient interface {
+    Get(ctx context.Context, key string) *redis.StringCmd
+    Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+}
+
+func NewRedisService(client redisClient, logger *logrus.Logger) *RedisService {
+    return &RedisService{client, logger, otel.Tracer("RedisService")}
 }
 
 // Get retrieves a string JSON value from Redis result.

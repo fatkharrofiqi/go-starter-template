@@ -18,16 +18,17 @@ import (
 )
 
 type AuthService struct {
-	jwtService       *JwtService
-	userRepository   *repository.UserRepository
-	logger           *logrus.Logger
-	blacklistService *BlacklistService
-	tracer           trace.Tracer
-	uow              *repository.UnitOfWork
+    jwtService       *JwtService
+    userRepository   *repository.UserRepository
+    logger           *logrus.Logger
+    blacklistService *BlacklistService
+    tracer           trace.Tracer
+    uow              *repository.UnitOfWork
+    hashPassword     func(password []byte, cost int) ([]byte, error)
 }
 
 func NewAuthService(jwtService *JwtService, userRepo *repository.UserRepository, blacklistService *BlacklistService, logger *logrus.Logger, uow *repository.UnitOfWork) *AuthService {
-	return &AuthService{jwtService, userRepo, logger, blacklistService, otel.Tracer("AuthService"), uow}
+    return &AuthService{jwtService: jwtService, userRepository: userRepo, logger: logger, blacklistService: blacklistService, tracer: otel.Tracer("AuthService"), uow: uow, hashPassword: bcrypt.GenerateFromPassword}
 }
 
 // Login authenticates a user and returns JWT tokens.
@@ -91,13 +92,13 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 			return errcode.ErrUserAlreadyExists
 		}
 
-		_, hashSpan := s.tracer.Start(txCtx, "HashPassword")
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		hashSpan.End()
-		if err != nil {
-			logger.WithError(err).Error("Failed to hash password")
-			return errcode.ErrPasswordEncryption
-		}
+        _, hashSpan := s.tracer.Start(txCtx, "HashPassword")
+        hashedPassword, err := s.hashPassword([]byte(req.Password), bcrypt.DefaultCost)
+        hashSpan.End()
+        if err != nil {
+            logger.WithError(err).Error("Failed to hash password")
+            return errcode.ErrPasswordEncryption
+        }
 
 		user = model.User{
 			UUID:      uuid.New().String(),
