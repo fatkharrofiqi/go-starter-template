@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"go-starter-template/internal/constant"
-	"go-starter-template/internal/service"
-	"go-starter-template/internal/utils/errcode"
-	"strings"
+    "go-starter-template/internal/constant"
+    "go-starter-template/internal/service"
+    "go-starter-template/internal/utils/errcode"
+    "strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	bearerPrefix = "Bearer "
-	bearerLen    = len(bearerPrefix)
-	minAuthLen   = bearerLen + 1 // "Bearer " + at least 1 char
-	authKey      = "auth"
+    bearerKeyword = "Bearer"
+    bearerLen     = len(bearerKeyword)
+    authKey       = "auth"
 )
 
 func AuthMiddleware(jwtService *service.JwtService, blacklistService *service.BlacklistService, log *logrus.Logger) fiber.Handler {
@@ -33,24 +32,18 @@ func AuthMiddleware(jwtService *service.JwtService, blacklistService *service.Bl
 			return errcode.ErrAuthorizationHeader
 		}
 
-		// Optimized prefix check with single length check
-		if len(authHeader) < minAuthLen {
-			logger.Warn("invalid authorization header format")
-			return errcode.ErrBearerHeader
-		}
+        // Check prefix first (be lenient: allow "Bearer" without trailing space)
+        if !strings.HasPrefix(authHeader, bearerKeyword) {
+            logger.Warn("invalid authorization header format")
+            return errcode.ErrBearerHeader
+        }
 
-		// Use unsafe string comparison for better performance
-		if !strings.HasPrefix(authHeader, bearerPrefix) {
-			logger.Warn("invalid authorization header format")
-			return errcode.ErrBearerHeader
-		}
-
-		// Extract token using slice operation
-		accessToken := authHeader[bearerLen:]
-		if accessToken == "" {
-			logger.Warn("access token missing in header")
-			return errcode.ErrAccessTokenMissing
-		}
+        // Extract token after the "Bearer" keyword and trim spaces
+        accessToken := strings.TrimSpace(authHeader[bearerLen:])
+        if accessToken == "" {
+            logger.Warn("access token missing in header")
+            return errcode.ErrAccessTokenMissing
+        }
 
 		// Check blacklist first
 		if err := blacklistService.IsTokenBlacklisted(spanCtx, accessToken, constant.TokenTypeAccess); err != nil {

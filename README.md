@@ -333,7 +333,8 @@ This project is licensed under the **MIT License**.
 
 - [x] Fix JWT refresh secret usage: make `GetRefreshSecret()` return `jwt.refresh_secret` from config.
 - [x] Implement Unit of Work pattern for transaction management across repositories with comprehensive testing.
-- [ ] Add unit tests for controllers (`auth_controller`, `user_controller`) and middleware (`auth_middleware`, `csrf_middleware`).
+- [x] Add unit tests for controllers (`auth_controller`, `user_controller`) and middleware (`auth_middleware`, `cors_middleware`).  
+- [x] Add unit tests for repositories (`user_repository`, `token_blacklist_repository`) with Redis and in-memory coverage.
 - [ ] Add integration tests using Fiber’s test utilities for auth flow (login, refresh, logout) and protected routes.
 - [ ] Document CSRF usage and add client example for `GenerateCsrfToken` + protected POST flow.
 - [ ] Implement optional refresh token rotation toggle in config and ensure old refresh tokens are blacklisted consistently.
