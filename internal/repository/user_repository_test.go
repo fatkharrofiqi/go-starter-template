@@ -155,7 +155,7 @@ func TestUserRepository_FindByUUID(t *testing.T) {
         WHERE up.user_uuid = $1
     `
     rolePermQuery := `
-        SELECT p.uuid, p.name
+        SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
@@ -184,13 +184,16 @@ func TestUserRepository_FindByUUID(t *testing.T) {
 
                 mock.ExpectQuery(regexp.QuoteMeta(rolePermQuery)).
                     WithArgs("u2").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}).AddRow("p2", "write"))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}).AddRow("r1", "p2", "write"))
             },
             assert: func(t *testing.T, u *model.User, err error) {
                 require.NoError(t, err)
                 require.Equal(t, "u2", u.UUID)
                 require.Len(t, u.Roles, 2)
-                require.Len(t, u.Permissions, 2)
+                // Only direct permissions on top-level; role perms are attached per role
+                require.Len(t, u.Permissions, 1)
+                // Role r1 has one permission attached
+                require.Len(t, u.Roles[0].Permissions, 1)
             },
         },
         {

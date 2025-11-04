@@ -94,41 +94,50 @@ func (r *UserRepository) FindByUUID(ctx context.Context, user *model.User, uuid 
 		return err
 	}
 	defer permRows.Close()
-	var permissions []model.Permission
-	for permRows.Next() {
-		var perm model.Permission
-		if err = permRows.Scan(&perm.UUID, &perm.Name); err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "scan direct permission failed")
-			return err
-		}
-		permissions = append(permissions, perm)
-	}
+    var permissions []model.Permission
+    for permRows.Next() {
+        var perm model.Permission
+        if err = permRows.Scan(&perm.UUID, &perm.Name); err != nil {
+            span.RecordError(err)
+            span.SetStatus(codes.Error, "scan direct permission failed")
+            return err
+        }
+        permissions = append(permissions, perm)
+    }
+    // Assign only direct user permissions to user.Permissions
+    user.Permissions = permissions
 
-	// Load role-based permissions and merge
-	rolePermRows, err := r.getExecutor(spanCtx).QueryContext(spanCtx, `
-        SELECT p.uuid, p.name
+    // Load role-based permissions and attach to each role
+    rolePermRows, err := r.getExecutor(spanCtx).QueryContext(spanCtx, `
+        SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1
     `, uuid)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "query role permissions failed")
-		return err
-	}
-	defer rolePermRows.Close()
-	for rolePermRows.Next() {
-		var perm model.Permission
-		if err := rolePermRows.Scan(&perm.UUID, &perm.Name); err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "scan role permission failed")
-			return err
-		}
-		permissions = append(permissions, perm)
-	}
-	user.Permissions = permissions
+    if err != nil {
+        span.RecordError(err)
+        span.SetStatus(codes.Error, "query role permissions failed")
+        return err
+    }
+    defer rolePermRows.Close()
+    // Map role UUID to index for quick attachment
+    roleIndex := make(map[string]int, len(user.Roles))
+    for i := range user.Roles {
+        roleIndex[user.Roles[i].UUID] = i
+    }
+    for rolePermRows.Next() {
+        var roleUUID string
+        var perm model.Permission
+        if err := rolePermRows.Scan(&roleUUID, &perm.UUID, &perm.Name); err != nil {
+            span.RecordError(err)
+            span.SetStatus(codes.Error, "scan role permission failed")
+            return err
+        }
+        if idx, ok := roleIndex[roleUUID]; ok {
+            user.Roles[idx].Permissions = append(user.Roles[idx].Permissions, perm)
+        }
+    }
 
 	return nil
 }

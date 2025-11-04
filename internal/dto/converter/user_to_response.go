@@ -6,24 +6,11 @@ import (
 )
 
 func UserToResponse(user *model.User) *dto.UserResponse {
-	// Collect role-based permissions
-	rolePermissionsMap := make(map[string]struct{})
-	for _, role := range user.Roles {
-		for _, perm := range role.Permissions {
-			rolePermissionsMap[perm.Name] = struct{}{}
-		}
-	}
-
-	// Collect direct permissions
-	for _, perm := range user.Permissions {
-		rolePermissionsMap[perm.Name] = struct{}{}
-	}
-
-	// Convert map to slice
-	combinedPermissions := make([]string, 0, len(rolePermissionsMap))
-	for perm := range rolePermissionsMap {
-		combinedPermissions = append(combinedPermissions, perm)
-	}
+    // Collect direct user permissions only (do not combine with role permissions)
+    directPermissions := make([]string, len(user.Permissions))
+    for i, perm := range user.Permissions {
+        directPermissions[i] = perm.Name
+    }
 
 	// Convert roles to RoleResponse
 	roles := make([]dto.RoleResponse, len(user.Roles))
@@ -38,13 +25,13 @@ func UserToResponse(user *model.User) *dto.UserResponse {
 		}
 	}
 
-	return &dto.UserResponse{
-		UUID:        user.UUID,
-		Name:        user.Name,
-		Email:       user.Email,
-		CreatedAt:   user.CreatedAt.Unix(),
-		UpdatedAt:   user.UpdatedAt.Unix(),
-		Roles:       roles,
-		Permissions: combinedPermissions,
-	}
+    return &dto.UserResponse{
+        UUID:        user.UUID,
+        Name:        user.Name,
+        Email:       user.Email,
+        CreatedAt:   user.CreatedAt.Unix(),
+        UpdatedAt:   user.UpdatedAt.Unix(),
+        Roles:       roles,
+        Permissions: directPermissions,
+    }
 }

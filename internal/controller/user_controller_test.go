@@ -99,13 +99,13 @@ func TestUserController_Me(t *testing.T) {
                     WithArgs("user-123").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
                 // role permissions (empty)
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("user-123").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
             },
             setupAuth:    authWithUUID("user-123"),
             expectStatus: http.StatusOK,
@@ -424,13 +424,13 @@ func TestUserController_Update(t *testing.T) {
                     WithArgs("u1").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
                 // role permissions (empty)
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("u1").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
                 mock.ExpectExec(regexp.QuoteMeta("UPDATE users SET name = $1, email = $2, updated_at = NOW() WHERE uuid = $3")).
                     WithArgs("Alice", "old@example.com", "u1").
                     WillReturnResult(sqlmock.NewResult(1, 1))
@@ -464,13 +464,13 @@ func TestUserController_Update(t *testing.T) {
         WHERE up.user_uuid = $1`)).
                     WithArgs("u1").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("u1").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
                 mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM users WHERE email = $1")).
                     WithArgs("new@example.com").
                     WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
@@ -509,13 +509,13 @@ func TestUserController_Update(t *testing.T) {
         WHERE up.user_uuid = $1`)).
                     WithArgs("u1").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("u1").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
                 mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM users WHERE email = $1")).
                     WithArgs("new@example.com").
                     WillReturnError(fmt.Errorf("count error"))
@@ -542,13 +542,13 @@ func TestUserController_Update(t *testing.T) {
         WHERE up.user_uuid = $1`)).
                     WithArgs("u1").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("u1").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
                 mock.ExpectExec(regexp.QuoteMeta("UPDATE users SET name = $1, email = $2, updated_at = NOW() WHERE uuid = $3")).
                     WithArgs("Alice", "old@example.com", "u1").
                     WillReturnError(fmt.Errorf("update error"))
@@ -640,13 +640,13 @@ func TestUserController_Delete(t *testing.T) {
         WHERE up.user_uuid = $1`)).
                     WithArgs("u1").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("u1").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
                 mock.ExpectExec(regexp.QuoteMeta("DELETE FROM users WHERE uuid = $1")).
                     WithArgs("u1").
                     WillReturnResult(sqlmock.NewResult(1, 1))
@@ -674,13 +674,13 @@ func TestUserController_Delete(t *testing.T) {
         WHERE up.user_uuid = $1`)).
                     WithArgs("u1").
                     WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
-                mock.ExpectQuery(regexp.QuoteMeta(`SELECT p.uuid, p.name
+                mock.ExpectQuery(regexp.QuoteMeta(`SELECT rp.role_uuid, p.uuid, p.name
         FROM permissions p
         INNER JOIN role_permissions rp ON rp.permission_uuid = p.uuid
         INNER JOIN user_roles ur ON ur.role_uuid = rp.role_uuid
         WHERE ur.user_uuid = $1`)).
                     WithArgs("u1").
-                    WillReturnRows(sqlmock.NewRows([]string{"uuid", "name"}))
+                    WillReturnRows(sqlmock.NewRows([]string{"role_uuid", "uuid", "name"}))
                 mock.ExpectExec(regexp.QuoteMeta("DELETE FROM users WHERE uuid = $1")).
                     WithArgs("u1").
                     WillReturnError(fmt.Errorf("delete error"))
